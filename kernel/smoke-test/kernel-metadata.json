@@ -1,0 +1,13 @@
+{
+  "id": "johancarloss/neurolens-smoke-test",
+  "title": "NeuroLens Smoke Test",
+  "code_file": "smoke_test.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "false",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": []
+}

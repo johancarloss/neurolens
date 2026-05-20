@@ -1,0 +1,32 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Credenciais (NUNCA commitar)
+.kaggle/
+kaggle.json
+*.env
+.env
+
+# Documentação privada (notas internas, rascunhos, correspondência)
+docs/private/
+
+# Outputs locais de execução remota
+output/
+kernel-output/
+*.h5
+*.pt
+*.pth
+*.ckpt
+
+# Logs e métricas locais
+logs/
+runs/
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db
