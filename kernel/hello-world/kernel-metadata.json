@@ -1,0 +1,14 @@
+{
+  "id": "johancarloss/neurolens-hello-world",
+  "title": "NeuroLens Hello World — Dual-Write Validation",
+  "code_file": "hello_world.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "dataset_sources": ["masoudnickparvar/brain-tumor-mri-dataset"],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
