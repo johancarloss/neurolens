@@ -1,0 +1,81 @@
+"""Tests for src/neurolens/config.py and YAML configs."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
+
+from neurolens.config import AugmentationConfig, TrainConfig, load_config
+
+CONFIGS_DIR = Path(__file__).parent.parent / "configs"
+
+
+def test_vgg16_stage1_yaml_loads() -> None:
+    """The committed vgg16_stage1.yaml must load cleanly with the right values."""
+    cfg = load_config(CONFIGS_DIR / "vgg16_stage1.yaml")
+    assert cfg.arch == "vgg16"
+    assert cfg.stage == 1
+    assert cfg.lr == 0.001
+    assert cfg.epochs == 50
+    assert cfg.batch_size == 32
+    assert cfg.augmentation.shear_range == 0.2
+    assert cfg.augmentation.zoom_range == 0.2
+    assert cfg.augmentation.horizontal_flip is True
+    assert cfg.dropout == 0.5
+    assert cfg.cv_folds == 5
+    assert cfg.seed == 42
+
+
+def test_vgg16_stage2_yaml_loads() -> None:
+    """Stage 2 YAML must have lr=1e-4 and stage=2; everything else identical."""
+    cfg = load_config(CONFIGS_DIR / "vgg16_stage2.yaml")
+    assert cfg.arch == "vgg16"
+    assert cfg.stage == 2
+    assert cfg.lr == 0.0001
+    assert cfg.epochs == 50
+
+
+def test_invalid_arch_rejected() -> None:
+    """Pydantic Literal validator must reject unsupported archs."""
+    with pytest.raises(ValidationError):
+        TrainConfig(arch="alexnet", stage=1, lr=1e-3)  # type: ignore[arg-type]
+
+
+def test_invalid_stage_rejected() -> None:
+    """Stage must be 1 or 2."""
+    with pytest.raises(ValidationError):
+        TrainConfig(arch="vgg16", stage=3, lr=1e-3)  # type: ignore[arg-type]
+
+
+def test_suspiciously_large_lr_rejected() -> None:
+    """The lr sanity check catches LR=1.0 (likely a forgotten /1000)."""
+    with pytest.raises(ValidationError, match="suspiciously large"):
+        TrainConfig(arch="vgg16", stage=1, lr=1.0)
+
+
+def test_suspiciously_small_lr_rejected() -> None:
+    """The lr sanity check catches LR=1e-9 (likely a typo)."""
+    with pytest.raises(ValidationError, match="suspiciously small"):
+        TrainConfig(arch="vgg16", stage=1, lr=1e-9)
+
+
+def test_extra_fields_rejected() -> None:
+    """Pydantic strict mode forbids unknown fields (catches typos in YAML keys)."""
+    with pytest.raises(ValidationError):
+        TrainConfig(arch="vgg16", stage=1, lr=1e-3, learning_rate=1e-3)  # type: ignore[call-arg]
+
+
+def test_load_config_missing_file_raises() -> None:
+    """Missing file must raise FileNotFoundError (not a cryptic pydantic error)."""
+    with pytest.raises(FileNotFoundError, match="not found"):
+        load_config("/nonexistent/config.yaml")
+
+
+def test_augmentation_defaults() -> None:
+    """AugmentationConfig with no args returns Wong's defaults."""
+    aug = AugmentationConfig()
+    assert aug.shear_range == 0.2
+    assert aug.zoom_range == 0.2
+    assert aug.horizontal_flip is True

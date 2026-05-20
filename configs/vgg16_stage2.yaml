@@ -1,0 +1,37 @@
+# NeuroLens — VGG16 stage 2 (fine-tune conv5 + head)
+#
+# Replicates Wong et al. (2025) stage-2 hyperparameters.
+# Stage 2: conv5 block + custom head trainable; LR drops 10x.
+
+arch: vgg16
+stage: 2
+
+# Optimization
+lr: 0.0001          # Wong et al. stage 2 learning rate (10x lower than stage 1)
+batch_size: 32
+epochs: 50
+optimizer: adam
+loss: cross_entropy
+
+# Augmentation (same as stage 1)
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+# Data
+image_size: 224
+num_workers: 4
+
+# Head
+dropout: 0.5
+
+# Reproducibility
+seed: 42
+
+# Cross-validation (same as stage 1)
+cv_folds: 5
+
+# Early stopping
+early_stopping_patience: null
+save_best_only: true

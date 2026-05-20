@@ -1,0 +1,17 @@
+# NeuroLens — Shared base settings (not directly loaded; for reference only)
+#
+# Concrete training configs (vgg16_stage1.yaml, etc.) override these.
+# Kept here so the canonical defaults are documented in one place.
+
+seed: 42
+batch_size: 32
+num_workers: 4
+image_size: 224
+cv_folds: 5
+optimizer: adam
+loss: cross_entropy
+
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true

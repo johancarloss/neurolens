@@ -1,0 +1,37 @@
+# NeuroLens — VGG16 stage 1 (head only)
+#
+# Replicates Wong et al. (2025, PLOS ONE) stage-1 hyperparameters.
+# Stage 1: ImageNet-pretrained features are FROZEN; only the custom head trains.
+
+arch: vgg16
+stage: 1
+
+# Optimization
+lr: 0.001           # Wong et al. stage 1 learning rate
+batch_size: 32
+epochs: 50
+optimizer: adam
+loss: cross_entropy
+
+# Augmentation (mirrors Keras ImageDataGenerator settings from the paper)
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+# Data
+image_size: 224
+num_workers: 4
+
+# Head
+dropout: 0.5        # Wong didn't specify; 0.5 is the convention
+
+# Reproducibility
+seed: 42
+
+# Cross-validation (5-fold stratified, inspired by Rahman et al. 2025)
+cv_folds: 5
+
+# Early stopping disabled by default to stay faithful to Wong's 50-epoch fixed schedule
+early_stopping_patience: null
+save_best_only: true
