@@ -32,8 +32,9 @@ os.environ["DATABASE_URL"] = us.get_secret("DATABASE_URL")
 os.environ["WANDB_API_KEY"] = us.get_secret("WANDB_API_KEY")
 
 # Sanity (do NOT print secret values)
-assert os.environ["DATABASE_URL"].startswith("postgresql://"), \
+assert os.environ["DATABASE_URL"].startswith("postgresql://"), (
     "DATABASE_URL must be a postgresql:// connection string"
+)
 assert len(os.environ["WANDB_API_KEY"]) >= 20, "WANDB_API_KEY looks too short"
 
 # ============================================================================
@@ -42,9 +43,14 @@ assert len(os.environ["WANDB_API_KEY"]) >= 20, "WANDB_API_KEY looks too short"
 REPO_DIR = Path("/kaggle/working/neurolens-repo")
 if not REPO_DIR.exists():
     subprocess.run(
-        ["git", "clone", "--depth", "1",
-         "https://github.com/johancarloss/neurolens.git",
-         str(REPO_DIR)],
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "https://github.com/johancarloss/neurolens.git",
+            str(REPO_DIR),
+        ],
         check=True,
     )
 
@@ -52,10 +58,7 @@ if not REPO_DIR.exists():
 # 3. Install minimal extras (Kaggle has torch, pandas, numpy etc. preinstalled)
 # ============================================================================
 subprocess.run(
-    ["pip", "install", "-q",
-     "psycopg2-binary>=2.9",
-     "wandb>=0.18",
-     "tenacity>=8.0"],
+    ["pip", "install", "-q", "psycopg2-binary>=2.9", "wandb>=0.18", "tenacity>=8.0"],
     check=True,
 )
 
@@ -145,8 +148,8 @@ print("=" * 60)
 print("Verification commands (run from local VPS):")
 print()
 print("  # 1. Check Postgres:")
-print(f"  psql -h <vps> -U neurolens_writer -d neurolens \\")
-print(f"      -c \"SELECT * FROM neurolens.runs WHERE id = {logger.run_id}\"")
+print("  psql -h <vps> -U neurolens_writer -d neurolens \\")
+print(f'      -c "SELECT * FROM neurolens.runs WHERE id = {logger.run_id}"')
 print()
 print("  # 2. Download JSONL:")
 print("  kaggle kernels output johancarloss/neurolens-hello-world -p ./kernel-output/hello-world")
