@@ -68,32 +68,85 @@ sys.path.insert(0, str(REPO_DIR / "src"))
 from neurolens.tracking.composite import CompositeLogger  # noqa: E402
 
 # ============================================================================
-# 4. Validate dataset attached at /kaggle/input/brain-tumor-mri-dataset/
+# 4. Validate dataset attached at /kaggle/input/
+# ----------------------------------------------------------------------------
+# Auto-discover the dataset folder (slug may differ from what we assume).
+# Auto-discover whether classes live under Training/Testing or at the root.
+# Tolerant of variations; fails fast with helpful message if structure is off.
 # ============================================================================
-DATA_ROOT = Path("/kaggle/input/brain-tumor-mri-dataset")
+EXPECTED_CLASSES = ["glioma", "meningioma", "notumor", "pituitary"]
+INPUT_ROOT = Path("/kaggle/input")
+
+print("=" * 60)
+print(f"Listing {INPUT_ROOT} contents:")
+for entry in INPUT_ROOT.iterdir():
+    print(f"  {entry.name}/" if entry.is_dir() else f"  {entry.name}")
+print("=" * 60)
+
+# Locate the brain-tumor dataset (try common slugs)
+candidate_slugs = [
+    "brain-tumor-mri-dataset",
+    "brain-tumor-mri",
+    "masoudnickparvar-brain-tumor-mri-dataset",
+]
+DATA_ROOT: Path | None = None
+for slug in candidate_slugs:
+    candidate = INPUT_ROOT / slug
+    if candidate.exists():
+        DATA_ROOT = candidate
+        break
+# Fallback: pick first folder containing expected class names
+if DATA_ROOT is None:
+    for entry in INPUT_ROOT.iterdir():
+        if entry.is_dir() and any(
+            (entry / c).exists() or (entry / "Training" / c).exists() for c in EXPECTED_CLASSES
+        ):
+            DATA_ROOT = entry
+            break
+
+assert DATA_ROOT is not None, (
+    f"Could not locate brain tumor dataset under {INPUT_ROOT}. Tried slugs: {candidate_slugs}"
+)
+print(f"✓ Dataset root resolved to: {DATA_ROOT}")
+
+# Detect whether structure is Training/{classes} or {classes} at root
 training_dir = DATA_ROOT / "Training"
 testing_dir = DATA_ROOT / "Testing"
-
-assert training_dir.exists(), f"Missing dataset folder: {training_dir}"
-assert testing_dir.exists(), f"Missing dataset folder: {testing_dir}"
-
-EXPECTED_CLASSES = ["glioma", "meningioma", "notumor", "pituitary"]
+if training_dir.exists() and testing_dir.exists():
+    structure = "Training/Testing layout"
+elif all((DATA_ROOT / c).exists() for c in EXPECTED_CLASSES):
+    structure = "flat classes at root (no Training/Testing split)"
+    # Treat the whole DATA_ROOT as both training_dir and testing_dir = None
+    training_dir = DATA_ROOT
+    testing_dir = None
+else:
+    # Print one level deep for diagnostics
+    print(f"DATA_ROOT contents: {[p.name for p in DATA_ROOT.iterdir()]}")
+    raise AssertionError(
+        f"Unrecognized dataset structure under {DATA_ROOT}. "
+        f"Expected either Training/{{classes}} + Testing/{{classes}}, "
+        f"or {{classes}} directly at root."
+    )
+print(f"✓ Structure detected: {structure}")
 
 train_classes = sorted(p.name for p in training_dir.iterdir() if p.is_dir())
-test_classes = sorted(p.name for p in testing_dir.iterdir() if p.is_dir())
-
 assert train_classes == EXPECTED_CLASSES, (
     f"Training classes mismatch. Got {train_classes}, expected {EXPECTED_CLASSES}"
 )
-assert test_classes == EXPECTED_CLASSES, (
-    f"Testing classes mismatch. Got {test_classes}, expected {EXPECTED_CLASSES}"
-)
-
 train_counts = {c: len(list((training_dir / c).glob("*.jpg"))) for c in train_classes}
-test_counts = {c: len(list((testing_dir / c).glob("*.jpg"))) for c in test_classes}
+
+if testing_dir is not None:
+    test_classes = sorted(p.name for p in testing_dir.iterdir() if p.is_dir())
+    assert test_classes == EXPECTED_CLASSES, (
+        f"Testing classes mismatch. Got {test_classes}, expected {EXPECTED_CLASSES}"
+    )
+    test_counts = {c: len(list((testing_dir / c).glob("*.jpg"))) for c in test_classes}
+else:
+    test_counts = dict.fromkeys(EXPECTED_CLASSES, 0)
 
 print("=" * 60)
 print("Dataset validated:")
+print(f"  Structure:       {structure}")
 print(f"  Training counts: {train_counts}  (total: {sum(train_counts.values())})")
 print(f"  Testing counts:  {test_counts}  (total: {sum(test_counts.values())})")
 print("=" * 60)
