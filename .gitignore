@@ -11,6 +11,11 @@ kaggle.json
 *.env
 .env
 
+# SSL keys/certs (gerados via scripts/setup-postgres-ssl.sh)
+docker/postgres-ssl/*.key
+docker/postgres-ssl/*.crt
+docker/postgres-ssl/*.pem
+
 # Documentação privada (notas internas, rascunhos, correspondência)
 docs/private/
 
