@@ -70,83 +70,120 @@ from neurolens.tracking.composite import CompositeLogger  # noqa: E402
 # ============================================================================
 # 4. Validate dataset attached at /kaggle/input/
 # ----------------------------------------------------------------------------
-# Auto-discover the dataset folder (slug may differ from what we assume).
-# Auto-discover whether classes live under Training/Testing or at the root.
-# Tolerant of variations; fails fast with helpful message if structure is off.
+# Use recursive glob to FIND the class folders wherever they are mounted.
+# Kaggle's path conventions change; we don't assume a fixed slug or layout.
+# Strategy: find any directory named "glioma" in /kaggle/input; its parent
+# is the train (or root) folder. Walk up one more level to get DATA_ROOT.
 # ============================================================================
 EXPECTED_CLASSES = ["glioma", "meningioma", "notumor", "pituitary"]
 INPUT_ROOT = Path("/kaggle/input")
 
+
+def print_tree(root: Path, max_depth: int = 3, _depth: int = 0) -> None:
+    """Print a directory tree up to `max_depth` for diagnostics."""
+    if _depth > max_depth:
+        return
+    indent = "  " * _depth
+    try:
+        entries = sorted(root.iterdir())
+    except (PermissionError, OSError) as exc:
+        print(f"{indent}<unreadable: {exc}>")
+        return
+    for entry in entries[:50]:
+        suffix = "/" if entry.is_dir() else ""
+        print(f"{indent}{entry.name}{suffix}")
+        if entry.is_dir():
+            print_tree(entry, max_depth, _depth + 1)
+
+
 print("=" * 60)
-print(f"Listing {INPUT_ROOT} contents:")
-for entry in INPUT_ROOT.iterdir():
-    print(f"  {entry.name}/" if entry.is_dir() else f"  {entry.name}")
+print(f"Tree under {INPUT_ROOT} (depth ≤ 3):")
+print_tree(INPUT_ROOT, max_depth=3)
 print("=" * 60)
 
-# Locate the brain-tumor dataset (try common slugs)
-candidate_slugs = [
-    "brain-tumor-mri-dataset",
-    "brain-tumor-mri",
-    "masoudnickparvar-brain-tumor-mri-dataset",
-]
-DATA_ROOT: Path | None = None
-for slug in candidate_slugs:
-    candidate = INPUT_ROOT / slug
-    if candidate.exists():
-        DATA_ROOT = candidate
-        break
-# Fallback: pick first folder containing expected class names
-if DATA_ROOT is None:
-    for entry in INPUT_ROOT.iterdir():
-        if entry.is_dir() and any(
-            (entry / c).exists() or (entry / "Training" / c).exists() for c in EXPECTED_CLASSES
-        ):
-            DATA_ROOT = entry
-            break
+# Recursive search: find all directories named like our expected classes
+glioma_dirs = list(INPUT_ROOT.rglob("glioma"))
+glioma_dirs = [p for p in glioma_dirs if p.is_dir()]
 
-assert DATA_ROOT is not None, (
-    f"Could not locate brain tumor dataset under {INPUT_ROOT}. Tried slugs: {candidate_slugs}"
+assert glioma_dirs, (
+    f"Could not find any 'glioma' folder under {INPUT_ROOT}. "
+    f"Tree shown above — verify the dataset is actually attached and contains "
+    f"the expected 4 classes."
 )
-print(f"✓ Dataset root resolved to: {DATA_ROOT}")
 
-# Detect whether structure is Training/{classes} or {classes} at root
-training_dir = DATA_ROOT / "Training"
-testing_dir = DATA_ROOT / "Testing"
-if training_dir.exists() and testing_dir.exists():
-    structure = "Training/Testing layout"
-elif all((DATA_ROOT / c).exists() for c in EXPECTED_CLASSES):
-    structure = "flat classes at root (no Training/Testing split)"
-    # Treat the whole DATA_ROOT as both training_dir and testing_dir = None
-    training_dir = DATA_ROOT
-    testing_dir = None
-else:
-    # Print one level deep for diagnostics
-    print(f"DATA_ROOT contents: {[p.name for p in DATA_ROOT.iterdir()]}")
-    raise AssertionError(
-        f"Unrecognized dataset structure under {DATA_ROOT}. "
-        f"Expected either Training/{{classes}} + Testing/{{classes}}, "
-        f"or {{classes}} directly at root."
+
+# Pick the deepest "glioma" that has siblings matching the other 3 classes
+def _is_valid_class_parent(parent: Path) -> bool:
+    """Returns True if `parent` contains all 4 expected classes as subfolders."""
+    return all((parent / c).is_dir() for c in EXPECTED_CLASSES)
+
+
+class_parents = sorted(
+    {g.parent for g in glioma_dirs if _is_valid_class_parent(g.parent)},
+    key=lambda p: str(p),
+)
+
+assert class_parents, (
+    f"Found 'glioma' folder(s) but none of their parents contain all 4 classes "
+    f"({EXPECTED_CLASSES}). Found glioma at: {glioma_dirs}"
+)
+
+# Detect Training/Testing layout (2 class_parents) vs flat (1 class_parent)
+if len(class_parents) == 2:
+    # Pick the one whose name starts with 'Train' as training, the other as test
+    training_dir = next(
+        (p for p in class_parents if p.name.lower().startswith("train")),
+        class_parents[0],
     )
-print(f"✓ Structure detected: {structure}")
+    testing_dir = next((p for p in class_parents if p != training_dir), None)
+    DATA_ROOT = training_dir.parent
+    structure = f"Training/Testing layout (root={DATA_ROOT})"
+elif len(class_parents) == 1:
+    training_dir = class_parents[0]
+    testing_dir = None
+    DATA_ROOT = training_dir
+    structure = f"flat classes layout (root={DATA_ROOT})"
+else:
+    # Multiple roots — pick the first as both train/test guard
+    training_dir = class_parents[0]
+    testing_dir = class_parents[1] if len(class_parents) > 1 else None
+    DATA_ROOT = training_dir.parent
+    structure = (
+        f"multiple class roots found: {class_parents} "
+        f"(using first as train, second as test if available)"
+    )
+
+print(f"✓ Dataset root resolved to: {DATA_ROOT}")
+print(f"✓ Training dir: {training_dir}")
+print(f"✓ Testing dir:  {testing_dir}")
+print(f"✓ Structure:    {structure}")
+
+
+def _count_images(folder: Path) -> int:
+    """Count common image file extensions inside a folder (non-recursive)."""
+    total = 0
+    for ext in ("*.jpg", "*.jpeg", "*.png", "*.JPG", "*.PNG"):
+        total += len(list(folder.glob(ext)))
+    return total
+
 
 train_classes = sorted(p.name for p in training_dir.iterdir() if p.is_dir())
 assert train_classes == EXPECTED_CLASSES, (
     f"Training classes mismatch. Got {train_classes}, expected {EXPECTED_CLASSES}"
 )
-train_counts = {c: len(list((training_dir / c).glob("*.jpg"))) for c in train_classes}
+train_counts = {c: _count_images(training_dir / c) for c in train_classes}
 
 if testing_dir is not None:
     test_classes = sorted(p.name for p in testing_dir.iterdir() if p.is_dir())
     assert test_classes == EXPECTED_CLASSES, (
         f"Testing classes mismatch. Got {test_classes}, expected {EXPECTED_CLASSES}"
     )
-    test_counts = {c: len(list((testing_dir / c).glob("*.jpg"))) for c in test_classes}
+    test_counts = {c: _count_images(testing_dir / c) for c in test_classes}
 else:
     test_counts = dict.fromkeys(EXPECTED_CLASSES, 0)
 
 print("=" * 60)
 print("Dataset validated:")
-print(f"  Structure:       {structure}")
 print(f"  Training counts: {train_counts}  (total: {sum(train_counts.values())})")
 print(f"  Testing counts:  {test_counts}  (total: {sum(test_counts.values())})")
 print("=" * 60)
