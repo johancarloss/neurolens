@@ -97,9 +97,24 @@ os.chdir(REPO_DIR)
 
 # ============================================================================
 # 4. Dispatch
+# ----------------------------------------------------------------------------
+# JOB_TYPE selects which entry-point module to run (default: train_vgg16).
+# CONFIG_PROFILE picks the config pair under configs/{profile}_stage{1,2}.yaml.
+# Both can be set in the Kaggle UI under Add-ons -> Variables. If env vars
+# don't propagate (Kaggle UI quirk), edit the defaults below + commit/push.
 # ============================================================================
+
+# Diagnostic dump: shows whether UI Variables are exposed as env vars.
+# Filtered to project-relevant prefixes only — never echoes secrets.
+_DIAG_PREFIXES = ("JOB_TYPE", "CONFIG_PROFILE", "KAGGLE_KERNEL", "KAGGLE_URL")
+print("[runner] env diagnostics (project-relevant vars):")
+for k in sorted(os.environ):
+    if any(k.startswith(p) for p in _DIAG_PREFIXES):
+        print(f"  {k}={os.environ[k]}")
+
 JOB_TYPE = os.environ.get("JOB_TYPE", "train_vgg16")
-print(f"[runner] JOB_TYPE={JOB_TYPE}")
+CONFIG_PROFILE = os.environ.get("CONFIG_PROFILE", "vgg16")
+print(f"[runner] JOB_TYPE={JOB_TYPE} CONFIG_PROFILE={CONFIG_PROFILE}")
 
 if JOB_TYPE not in JOB_TYPES:
     raise ValueError(
@@ -109,4 +124,4 @@ if JOB_TYPE not in JOB_TYPES:
     )
 
 module = importlib.import_module(JOB_TYPES[JOB_TYPE])
-module.main()
+module.main(config_profile=CONFIG_PROFILE)
