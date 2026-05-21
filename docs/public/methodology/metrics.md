@@ -22,7 +22,7 @@ All five are computed in [`src/neurolens/training/evaluator.py`](../../../src/ne
 ## Accuracy
 
 $$
-\text{accuracy} = \frac{\text{# correct predictions}}{\text{# total predictions}}
+\text{accuracy} = \frac{\text{number of correct predictions}}{\text{total number of predictions}}
 $$
 
 The most intuitive metric. **Value range**: 0 to 1.
