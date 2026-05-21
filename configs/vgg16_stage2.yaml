@@ -9,7 +9,7 @@ stage: 2
 # Optimization
 lr: 0.0001          # Wong et al. stage 2 learning rate (10x lower than stage 1)
 batch_size: 32
-epochs: 50
+epochs: 2           # TEMPORARY pre-check (will be reverted to 50 after timing extrapolation)
 optimizer: adam
 loss: cross_entropy
 
