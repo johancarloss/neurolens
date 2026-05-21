@@ -43,7 +43,7 @@ from neurolens.training.trainer import Trainer
 
 CONFIG_STAGE1_PATH = "configs/vgg16_stage1.yaml"
 CONFIG_STAGE2_PATH = "configs/vgg16_stage2.yaml"
-KAGGLE_KERNEL_URL = "https://www.kaggle.com/code/johancarloss/neurolens-train-vgg16"
+KAGGLE_KERNEL_URL = "https://www.kaggle.com/code/johancarloss/neurolens-runner"
 
 
 def _set_seeds(seed: int) -> None:
