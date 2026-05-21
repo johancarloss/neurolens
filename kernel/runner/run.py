@@ -2,22 +2,21 @@
 
 This kernel is pushed to Kaggle exactly ONCE. From then on, every job type
 (VGG16 training, ResNet50 training, XAI batch generation, ...) is selected
-via the ``JOB_TYPE`` environment variable, set through the Kaggle UI under
-``Add-ons -> Variables``.
+via the ``configs/active_run.yaml`` file in the repo.
 
-Why: ``kaggle kernels push`` unlinks secrets and dataset attachments every
-time. By having a single universal runner, we attach secrets + dataset
-ONCE for the entire project. To switch jobs, only the ``JOB_TYPE``
-variable on the UI needs to change.
+Why a file instead of UI variables: Kaggle Notebook editor does NOT have a
+"Variables" UI (confirmed via official docs — only Secrets/Datasets/Models).
+Using a versioned YAML in the repo gives us deterministic, auditable
+"switch the active run" semantics: edit, ``git push``, click Run All.
 
-Responsibilities of THIS script (the only ones — no domain logic):
+Responsibilities of THIS script (no domain logic):
     1. Load credentials from Kaggle Secrets
     2. Clone the public neurolens repo (always fresh -> latest main)
     3. Install minimal extra deps not on the Kaggle base image
-    4. Dispatch to the right ``main()`` based on ``JOB_TYPE``
+    4. Read ``configs/active_run.yaml`` from the cloned repo
+    5. Dispatch to the right ``main(config_profile=...)`` based on job_type
 
 All actual logic lives in ``src/neurolens/...`` inside the cloned repo.
-This file MUST stay short. If it grows past ~80 lines, suspect domain leak.
 """
 
 from __future__ import annotations
@@ -28,13 +27,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import yaml
 from kaggle_secrets import UserSecretsClient
 
 # ============================================================================
-# JOB registry — maps JOB_TYPE -> dotted import path with a ``main()``
-# ----------------------------------------------------------------------------
-# Adding a new job in a future phase: append one line below + ensure the
-# module exposes a ``main()`` callable. ZERO changes anywhere else needed.
+# JOB registry — maps job_type -> dotted import path with a ``main(config_profile)``
+# Add new jobs in future phases by appending one line.
 # ============================================================================
 JOB_TYPES: dict[str, str] = {
     "train_vgg16": "neurolens.training.run_vgg16",
@@ -90,38 +88,36 @@ subprocess.run(
     check=True,
 )
 
-# Make neurolens importable and run from the repo root so relative config
-# paths inside run_*.py modules resolve correctly.
+# Make neurolens importable and run from the repo root.
 sys.path.insert(0, str(REPO_DIR / "src"))
 os.chdir(REPO_DIR)
 
 # ============================================================================
-# 4. Dispatch
-# ----------------------------------------------------------------------------
-# JOB_TYPE selects which entry-point module to run (default: train_vgg16).
-# CONFIG_PROFILE picks the config pair under configs/{profile}_stage{1,2}.yaml.
-# Both can be set in the Kaggle UI under Add-ons -> Variables. If env vars
-# don't propagate (Kaggle UI quirk), edit the defaults below + commit/push.
+# 4. Read configs/active_run.yaml from the cloned repo
 # ============================================================================
-
-# Diagnostic dump: shows whether UI Variables are exposed as env vars.
-# Filtered to project-relevant prefixes only — never echoes secrets.
-_DIAG_PREFIXES = ("JOB_TYPE", "CONFIG_PROFILE", "KAGGLE_KERNEL", "KAGGLE_URL")
-print("[runner] env diagnostics (project-relevant vars):")
-for k in sorted(os.environ):
-    if any(k.startswith(p) for p in _DIAG_PREFIXES):
-        print(f"  {k}={os.environ[k]}")
-
-JOB_TYPE = os.environ.get("JOB_TYPE", "train_vgg16")
-CONFIG_PROFILE = os.environ.get("CONFIG_PROFILE", "vgg16")
-print(f"[runner] JOB_TYPE={JOB_TYPE} CONFIG_PROFILE={CONFIG_PROFILE}")
-
-if JOB_TYPE not in JOB_TYPES:
-    raise ValueError(
-        f"Unknown JOB_TYPE: {JOB_TYPE!r}. "
-        f"Supported: {sorted(JOB_TYPES)}. "
-        f"Set JOB_TYPE in Add-ons -> Variables on the Kaggle UI."
+ACTIVE_RUN_PATH = REPO_DIR / "configs" / "active_run.yaml"
+if not ACTIVE_RUN_PATH.exists():
+    raise FileNotFoundError(
+        f"Missing {ACTIVE_RUN_PATH}. The runner reads this file to decide what "
+        f"to execute. Create it in the repo and `git push`."
     )
 
-module = importlib.import_module(JOB_TYPES[JOB_TYPE])
-module.main(config_profile=CONFIG_PROFILE)
+with ACTIVE_RUN_PATH.open() as f:
+    active_run = yaml.safe_load(f) or {}
+
+job_type = active_run.get("job_type", "train_vgg16")
+config_profile = active_run.get("config_profile", "vgg16")
+
+print(f"[runner] active_run.yaml -> job_type={job_type!r} config_profile={config_profile!r}")
+
+# ============================================================================
+# 5. Dispatch
+# ============================================================================
+if job_type not in JOB_TYPES:
+    raise ValueError(
+        f"Unknown job_type: {job_type!r}. Supported: {sorted(JOB_TYPES)}. "
+        f"Edit configs/active_run.yaml in the repo and git push."
+    )
+
+module = importlib.import_module(JOB_TYPES[job_type])
+module.main(config_profile=config_profile)

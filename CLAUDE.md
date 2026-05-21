@@ -50,16 +50,22 @@ Esses arquivos são **fonte de verdade** sobre por que algo foi decidido.
 
 ### 3.3. Kaggle
 
-**Padrão Bootstrap (validado na Fase 0):**
+**Padrão Bootstrap (validado na Fase 0/1):**
 
-- Kernels Kaggle são **mínimos** — só clonam o repo público + chamam função do pacote.
-- **`kaggle kernels push` apenas UMA vez por kernel** (na criação inicial),
-  pois cada push **desanexa secrets e datasets** (limitação conhecida do
-  Kaggle CLI).
-- Mudanças em código pós-criação: `git push` → UI do Kaggle → **Save & Run All**.
-  Não precisa CLI push, não precisa re-attach.
-- Toda lógica vive em `src/neurolens/...`. Arquivos em `kernel/<nome>/run.py`
-  só fazem bootstrap.
+- Um único kernel universal `neurolens-runner` na Kaggle.
+- O kernel lê `configs/active_run.yaml` do repo clonado pra decidir
+  `job_type` e `config_profile` da execução. **Não existe UI de Variables
+  no Kaggle Notebook editor** — confirmado em maio/2026.
+- **`kaggle kernels push` apenas UMA vez** (na criação do `runner`), pois
+  cada push desanexa secrets e datasets (limitação conhecida).
+- **Para mudar o que vai rodar:** edita `configs/active_run.yaml`,
+  `git push`, abre Kaggle UI → **Save & Run All**.
+- Para mudar o código (modelo/treino/XAI): mesma coisa — `git push` +
+  Save & Run All. O kernel sempre clona o repo fresh.
+- Toda lógica vive em `src/neurolens/...`. Arquivo `kernel/runner/run.py`
+  só faz bootstrap (secrets → clone → install → read active_run → dispatch).
+- Profiles disponíveis pra `config_profile`: `smoke_micro` (1 fold, 1 ép,
+  capped), `smoke_small` (1 fold, 2 ép, full), `vgg16` (produção).
 
 ### 3.4. Tracking (dual-write obrigatório)
 
