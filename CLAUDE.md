@@ -67,6 +67,16 @@ Esses arquivos são **fonte de verdade** sobre por que algo foi decidido.
 - Profiles disponíveis pra `config_profile`: `smoke_micro` (1 fold, 1 ép,
   capped), `smoke_small` (1 fold, 2 ép, full), `vgg16` (produção).
 
+**Regra crítica (confirmada empiricamente 2026-05-21):** `kaggle kernels
+push` SEMPRE desanexa secrets do kernel — em CADA push, não só na
+criação. Por isso, após criar o `neurolens-runner` e Johan attachar
+secrets+dataset uma vez, **NUNCA mais fazer CLI push pra esse kernel**.
+Mudanças no `kernel/runner/run.py` exigiriam novo CLI push e novo
+re-attach manual — então o `run.py` deve ficar imutável após a
+criação. Toda lógica que pode mudar fica em `src/neurolens/...` (que vem
+do `git clone` no boot do kernel) ou em `configs/active_run.yaml` (lido
+do repo clonado a cada Run All).
+
 ### 3.4. Tracking (dual-write obrigatório)
 
 Todo experimento de treino/avaliação **deve** passar pelo `CompositeLogger`:
