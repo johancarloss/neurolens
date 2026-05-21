@@ -74,6 +74,41 @@ NUNCA quebrar o loop de treino por erro de logging.
 
 ---
 
+## 3.5. Smoke test progressivo (OBRIGATÓRIO antes de qualquer execução paga em GPU/tempo)
+
+**Regra crítica derivada de erro real (2026-05-21):** ao validar qualquer
+pipeline novo (treino, batch inference, geração de XAI, ETL), **NUNCA**
+pular direto pra escala média. Sempre rodar progressivamente:
+
+| Nível | Escopo | Tempo alvo | Pra que serve |
+|-------|--------|------------|---------------|
+| **Micro** | 1 fold × 1 época × 50-100 imagens × 10 predictions | <2 min | Imports, secrets, conexões, traceback, loops infinitos |
+| **Pequeno** | 1 fold × 2 épocas × dataset completo | <10 min | Tempo REAL por iteração, gargalos surpresa, persistência em escala |
+| **Médio** | 5 folds × 2 épocas (só se necessário) | <30 min | Estatística reduzida entre folds |
+| **Real** | 5 folds × 50 épocas | sem teto | Produto final |
+
+**Anti-padrão a evitar:** pré-check de VGG16 começou direto no nível MÉDIO
+(5 folds × 2 ép × 1600 predictions persistidas via SSL). Resultado: 35 min
+por fold por causa de gargalo SSL não detectado, ~3h totais. Se tivesse
+começado no nível MICRO (1 fold × 1 ép × 50 imgs), o gargalo apareceria
+em 30 segundos e seria fixado antes do médio.
+
+**Como aplicar:**
+1. Antes de propor "pré-check" de pipeline novo, perguntar: "qual é a
+   versão MAIS PEQUENA que valida a camada de menor nível?" — começar
+   por essa
+2. Cada nível confirma camadas específicas. Não pular níveis
+3. Se descobrir gargalo, otimizar antes de subir de nível
+4. Documentar tempo real por unidade ao final do nível pequeno antes de
+   escalar
+
+**Implementação prática no projeto:**
+- `configs/smoke_micro.yaml` → 1 ép, 50 imgs por classe (cap), 10 predictions
+- `configs/smoke_small.yaml` → 2 ép, dataset completo, 1 fold
+- `configs/vgg16_stage{1,2}.yaml` → produção (50 ép, 5 folds)
+
+---
+
 ## 4. Convenção de pós-implementação (OBRIGATÓRIA)
 
 ### 4.1. Quando
