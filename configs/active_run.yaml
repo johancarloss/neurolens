@@ -18,4 +18,4 @@ job_type: train_vgg16
 #   - smoke_micro : 1 fold, 1 epoch, 50/20 samples/class. <2 min. USE FIRST.
 #   - smoke_small : 1 fold, 2 epochs, full dataset. Measures real per-epoch time.
 #   - vgg16       : 5 folds (or target_fold), 50 epochs each stage. PRODUCTION.
-config_profile: smoke_small
+config_profile: vgg16

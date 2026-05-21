@@ -31,6 +31,8 @@ seed: 42
 
 # Cross-validation (same as stage 1)
 cv_folds: 5
+# Match stage 1: only fold 0 runs initially.
+target_fold: 0
 
 # Early stopping
 early_stopping_patience: null
