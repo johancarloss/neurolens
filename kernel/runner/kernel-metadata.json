@@ -1,6 +1,6 @@
 {
-  "id": "johancarloss/neurolens-train-vgg16",
-  "title": "NeuroLens Train VGG16",
+  "id": "johancarloss/neurolens-runner",
+  "title": "NeuroLens Runner",
   "code_file": "run.py",
   "language": "python",
   "kernel_type": "script",
