@@ -59,6 +59,15 @@ class TrainConfig(BaseModel):
 
     # --- Cross-validation --------------------------------------------------
     cv_folds: int = Field(default=5, ge=2, le=10)
+    # When set (0..cv_folds-1), only this single fold runs (smoke / per-fold mode).
+    # When None, ALL folds run sequentially in one execution.
+    target_fold: int | None = Field(default=None, ge=0)
+
+    # --- Smoke-test caps (None = use full dataset) -------------------------
+    # If set, cap samples per class. Used by smoke_micro to validate the
+    # pipeline end-to-end in <2 minutes before scaling up.
+    train_samples_per_class: int | None = Field(default=None, ge=1)
+    test_samples_per_class: int | None = Field(default=None, ge=1)
 
     # --- Early stopping (optional) ----------------------------------------
     early_stopping_patience: int | None = Field(default=None, ge=1)

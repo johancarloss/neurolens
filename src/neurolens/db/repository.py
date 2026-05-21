@@ -21,7 +21,7 @@ from typing import Any
 
 import psycopg2
 from psycopg2.extensions import connection as PgConnection  # noqa: N812 — third-party class name
-from psycopg2.extras import Json
+from psycopg2.extras import Json, execute_values
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 CONNECT_TIMEOUT_SECONDS = 10
@@ -251,3 +251,60 @@ def insert_prediction(
         row = cur.fetchone()
         assert row is not None, "INSERT ... RETURNING returned no row"
         return int(row[0])
+
+
+def insert_predictions_bulk(
+    run_id: int,
+    rows: list[dict[str, Any]],
+    page_size: int = 500,
+) -> int:
+    """Insert many prediction rows in a single batched INSERT.
+
+    Designed to replace tight loops of ``insert_prediction`` when persisting
+    full test-set evaluations (1600 images per fold). Opens ONE connection
+    and ONE SSL handshake instead of N per insert — typically 30+ minutes
+    faster on remote PostgreSQL.
+
+    Args:
+        run_id: parent run identifier.
+        rows: list of dicts with keys:
+            ``image_path``, ``image_filename``, ``true_label``,
+            ``predicted_label``, ``probs`` (dict[str, float]),
+            ``confidence``, and optional ``inference_time_ms``.
+        page_size: how many rows per server round-trip inside the batch.
+
+    Returns:
+        Number of rows inserted (equals ``len(rows)``).
+    """
+    if not rows:
+        return 0
+
+    values = [
+        (
+            run_id,
+            r["image_path"],
+            r["image_filename"],
+            r["true_label"],
+            r["predicted_label"],
+            Json(r["probs"]),
+            r["confidence"],
+            r.get("inference_time_ms"),
+        )
+        for r in rows
+    ]
+
+    with get_connection() as conn, conn.cursor() as cur:
+        execute_values(
+            cur,
+            """
+            INSERT INTO neurolens.predictions (
+                run_id, image_path, image_filename,
+                true_label, predicted_label,
+                probs, confidence, inference_time_ms
+            )
+            VALUES %s
+            """,
+            values,
+            page_size=page_size,
+        )
+    return len(rows)

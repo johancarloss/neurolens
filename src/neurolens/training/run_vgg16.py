@@ -1,20 +1,26 @@
 """End-to-end entry point for VGG16 training on the brain tumor MRI dataset.
 
-Called from ``kernel/train-vgg16/run.py`` after the kernel bootstrap clones
-the repo and installs deps.
+Called from ``kernel/runner/run.py`` after the kernel bootstrap clones the
+repo and installs deps. The kernel passes ``config_profile`` (e.g.
+``"smoke_micro"``, ``"smoke_small"``, ``"vgg16"``) which selects the YAML
+pair under ``configs/{profile}_stage{1,2}.yaml``.
 
 Pipeline (per fold):
-    1. Load stage 1 + stage 2 configs (YAMLs)
+    1. Load stage 1 + stage 2 configs for the requested profile
     2. Set seeds for reproducibility
     3. Discover dataset (kaggle_paths) and build train/test ImageFolders
-    4. Stratified K-fold on train indices; pick target fold (or all if not set)
-    5. STAGE 1 (head only): build VGG16 stage=1, train ``epochs`` epochs
-    6. STAGE 2 (fine-tune conv5): unfreeze conv5, swap optimizer (LR=1e-4),
+    4. Apply optional smoke-test sample caps (``train/test_samples_per_class``)
+    5. Stratified K-fold on train indices; pick ``target_fold`` from config
+       (None -> all folds run sequentially)
+    6. STAGE 1 (head only): build VGG16 stage=1, train ``epochs`` epochs
+    7. STAGE 2 (fine-tune conv5): unfreeze conv5, swap optimizer (LR=1e-4),
        train another ``epochs`` epochs
-    7. Evaluate on TEST set; persist per-image predictions to Postgres
-    8. Save best checkpoint; finish W&B + Postgres runs
+    8. Evaluate on TEST set; BULK-persist predictions to Postgres
+    9. Save best checkpoint; finish W&B + Postgres runs
 
-Control which fold to run via env var ``FOLD_IDX`` (0..4). Unset = all folds.
+Both ``CONFIG_PROFILE`` and ``target_fold`` are config-driven (no env-var
+surprises). Switch modes by editing ``CONFIG_PROFILE`` in the Kaggle UI
+Variables, or as a fallback by editing ``kernel/runner/run.py`` and pushing.
 """
 
 from __future__ import annotations
@@ -33,7 +39,7 @@ from neurolens.config import TrainConfig, load_config
 from neurolens.data.dataset import CLASSES, build_dataset
 from neurolens.data.kaggle_paths import discover_brain_tumor_dataset
 from neurolens.data.transforms import eval_transforms, train_transforms
-from neurolens.db.repository import insert_prediction
+from neurolens.db.repository import insert_predictions_bulk
 from neurolens.models.factory import build_model
 from neurolens.models.vgg16 import unfreeze_conv5
 from neurolens.tracking.composite import CompositeLogger
@@ -41,8 +47,9 @@ from neurolens.training.cv import stratified_kfold_indices
 from neurolens.training.evaluator import evaluate_test_set
 from neurolens.training.trainer import Trainer
 
-CONFIG_STAGE1_PATH = "configs/vgg16_stage1.yaml"
-CONFIG_STAGE2_PATH = "configs/vgg16_stage2.yaml"
+# Config profile resolution. The kernel may pass a ``CONFIG_PROFILE`` env
+# var (e.g. ``smoke_micro``, ``smoke_small``, or default ``vgg16``).
+# Configs live at ``configs/{profile}_stage{1,2}.yaml``.
 KAGGLE_KERNEL_URL = "https://www.kaggle.com/code/johancarloss/neurolens-runner"
 
 
@@ -133,7 +140,13 @@ def _persist_predictions(
     test_dataset: Any,
     test_metrics: dict[str, Any],
 ) -> None:
-    """Insert one ``predictions`` row per test image into Postgres."""
+    """Batch-insert all test predictions into Postgres in a single round-trip.
+
+    Previously this used a tight loop of ``insert_prediction`` (one SSL
+    handshake per row). For 1600 rows on remote Postgres that took ~30 min
+    per fold. The batched version using ``execute_values`` typically takes
+    a few seconds.
+    """
     if run_id is None:
         return
     targets = test_metrics["targets"]
@@ -141,20 +154,25 @@ def _persist_predictions(
     probs = test_metrics["probs"]
     samples = test_dataset.samples  # ImageFolder: list[tuple[path, class_idx]]
 
+    rows: list[dict[str, Any]] = []
     for i, (true_idx, pred_idx, prob_vec) in enumerate(zip(targets, preds, probs, strict=True)):
         img_path, _ = samples[i]
-        try:
-            insert_prediction(
-                run_id=run_id,
-                image_path=str(img_path),
-                image_filename=Path(img_path).name,
-                true_label=CLASSES[int(true_idx)],
-                predicted_label=CLASSES[int(pred_idx)],
-                probs={cls: float(prob_vec[j]) for j, cls in enumerate(CLASSES)},
-                confidence=float(prob_vec[int(pred_idx)]),
-            )
-        except Exception as exc:  # noqa: BLE001 — don't break training on a logging fail
-            print(f"[run_vgg16] WARNING: insert_prediction failed for img {i}: {exc!r}")
+        rows.append(
+            {
+                "image_path": str(img_path),
+                "image_filename": Path(img_path).name,
+                "true_label": CLASSES[int(true_idx)],
+                "predicted_label": CLASSES[int(pred_idx)],
+                "probs": {cls: float(prob_vec[j]) for j, cls in enumerate(CLASSES)},
+                "confidence": float(prob_vec[int(pred_idx)]),
+            }
+        )
+
+    try:
+        n_inserted = insert_predictions_bulk(run_id, rows)
+        print(f"[run_vgg16] persisted {n_inserted} predictions to Postgres (bulk)")
+    except Exception as exc:  # noqa: BLE001 — never break training on a logging fail
+        print(f"[run_vgg16] WARNING: insert_predictions_bulk failed: {exc!r}")
 
 
 def run_one_fold(
@@ -267,14 +285,57 @@ def run_one_fold(
     }
 
 
-def main() -> None:
-    """Entry point invoked from the Kaggle kernel."""
+def _cap_samples_per_class(dataset: Any, per_class: int | None, seed: int = 42) -> Any:
+    """Return a Subset capping the number of samples per class.
+
+    When ``per_class`` is None, returns the dataset unchanged (no Subset wrapping).
+    Used by smoke configs to keep micro runs under ~2 minutes.
+    """
+    if per_class is None:
+        return dataset
+    rng = np.random.default_rng(seed)
+    targets = np.array(dataset.targets)
+    classes = sorted(set(targets.tolist()))
+    selected: list[int] = []
+    for cls in classes:
+        idxs = np.where(targets == cls)[0]
+        chosen = rng.choice(idxs, size=min(per_class, len(idxs)), replace=False)
+        selected.extend(chosen.tolist())
+    selected = sorted(selected)
+
+    class _CappedView(Subset):
+        """Subset that also exposes ``.targets`` and ``.samples`` for compatibility."""
+
+        @property
+        def targets(self) -> list[int]:
+            return [self.dataset.targets[i] for i in self.indices]  # type: ignore[index]
+
+        @property
+        def samples(self) -> list[tuple[str, int]]:
+            return [self.dataset.samples[i] for i in self.indices]  # type: ignore[index]
+
+    return _CappedView(dataset, selected)
+
+
+def main(config_profile: str | None = None) -> None:
+    """Entry point invoked from the Kaggle kernel.
+
+    Args:
+        config_profile: name of the config pair to load (e.g. ``"vgg16"``,
+            ``"smoke_micro"``, ``"smoke_small"``). Resolves to
+            ``configs/{profile}_stage1.yaml`` and ``configs/{profile}_stage2.yaml``.
+            When None, falls back to the ``CONFIG_PROFILE`` env var, then to
+            ``"vgg16"``.
+    """
     repo_dir = Path("/kaggle/working/neurolens-repo")
     output_dir = Path("/kaggle/working")
     git_commit = _git_commit_sha(repo_dir)
 
-    config_stage1 = load_config(repo_dir / CONFIG_STAGE1_PATH)
-    config_stage2 = load_config(repo_dir / CONFIG_STAGE2_PATH)
+    profile = config_profile or os.environ.get("CONFIG_PROFILE") or "vgg16"
+    print(f"[run_vgg16] config_profile={profile}")
+
+    config_stage1 = load_config(repo_dir / "configs" / f"{profile}_stage1.yaml")
+    config_stage2 = load_config(repo_dir / "configs" / f"{profile}_stage2.yaml")
     _set_seeds(config_stage1.seed)
 
     paths = discover_brain_tumor_dataset()
@@ -294,18 +355,38 @@ def main() -> None:
         split="test",
     )
 
+    # Apply smoke-test caps if configured
+    if config_stage1.train_samples_per_class is not None:
+        print(
+            f"[run_vgg16] capping train at {config_stage1.train_samples_per_class}"
+            f" samples/class (original: {len(full_train)})"
+        )
+        full_train = _cap_samples_per_class(
+            full_train, config_stage1.train_samples_per_class, seed=config_stage1.seed
+        )
+        print(f"[run_vgg16] capped train size: {len(full_train)}")
+    if config_stage1.test_samples_per_class is not None:
+        print(
+            f"[run_vgg16] capping test at {config_stage1.test_samples_per_class}"
+            f" samples/class (original: {len(test_dataset)})"
+        )
+        test_dataset = _cap_samples_per_class(
+            test_dataset, config_stage1.test_samples_per_class, seed=config_stage1.seed
+        )
+        print(f"[run_vgg16] capped test size: {len(test_dataset)}")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[run_vgg16] Using device: {device}")
     if torch.cuda.is_available():
         print(f"[run_vgg16] GPU: {torch.cuda.get_device_name(0)}")
         print(f"[run_vgg16] CUDA: {torch.version.cuda}")
 
-    target_fold_env = os.environ.get("FOLD_IDX")
-    target_fold = int(target_fold_env) if target_fold_env is not None else None
+    # target_fold now comes from the config (deterministic, no env-var surprises)
+    target_fold = config_stage1.target_fold
     if target_fold is not None:
-        print(f"[run_vgg16] Running ONLY fold {target_fold} (FOLD_IDX env var set)")
+        print(f"[run_vgg16] running ONLY fold {target_fold} (config.target_fold)")
     else:
-        print("[run_vgg16] FOLD_IDX not set — running ALL folds sequentially")
+        print("[run_vgg16] config.target_fold=None — running ALL folds sequentially")
 
     results: list[dict[str, float]] = []
     for fold, train_idx, val_idx in stratified_kfold_indices(

@@ -1,0 +1,45 @@
+# NeuroLens — SMOKE MICRO (stage 1)
+#
+# Smallest possible pipeline run: 1 fold, 1 epoch, 50 train + 20 test
+# samples PER CLASS. Used FIRST when validating any new pipeline change.
+# Runs in <2 minutes; if it crashes or loops, the medium/real runs would
+# too — feedback loop is fast.
+
+arch: vgg16
+stage: 1
+
+# Optimization
+lr: 0.001
+batch_size: 32
+epochs: 1
+optimizer: adam
+loss: cross_entropy
+
+# Augmentation (same as real config — we want to exercise the same code path)
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+# Data
+image_size: 224
+num_workers: 4
+
+# Head
+dropout: 0.5
+
+# Reproducibility
+seed: 42
+
+# Cross-validation: 5 folds defined (so the stratification logic runs) but
+# only ``target_fold: 0`` is actually executed.
+cv_folds: 5
+target_fold: 0
+
+# Sample caps — make the run truly micro
+train_samples_per_class: 50
+test_samples_per_class: 20
+
+# Early stopping disabled
+early_stopping_patience: null
+save_best_only: true
