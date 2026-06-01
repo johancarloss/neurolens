@@ -143,33 +143,48 @@ characteristic *heterogeneous* or *ring-enhancing* appearance.
 
 ### Example images (from the training set)
 
-**1. Subtle case — coronal view.** You have to hunt for it: compare the two
-halves and notice the asymmetric darker region with effaced folds on one side.
+Three clear "textbook" examples — one per imaging plane — followed by one
+deliberately hard case.
 
-![Glioma, coronal, subtle](../assets/clinical/glioma-coronal-subtle.jpg)
+**1. Coronal view — all signs at once.** Face-on slice (eye sockets visible at
+the bottom). On the image's right (the patient's left) there is a **ring-shaped
+mass**: a bright enhancing rim around a darker heterogeneous center. It breaks
+the brain's left–right **symmetry** plainly, and pushes the nearby ventricle —
+**mass effect**. This single image shows asymmetry, ring enhancement, and mass
+effect together.
 
-**2. Obvious case — sagittal view.** Side profile (eye and nose visible). The
-mass is unmistakable: a rounded, blotchy region with an ill-defined border that
-breaks the smooth brain pattern.
+![Glioma, coronal, ring-enhancing with mass effect](../assets/clinical/glioma-coronal-ring.jpg)
+
+**2. Axial view — large mass displacing structures.** Top-down slice. A large,
+well-defined round mass on the image's left (patient's right) shoves the normal
+midline structures and ventricles toward the opposite side — a dramatic example
+of **mass effect** and broken symmetry.
+
+![Glioma, axial, large mass with midline shift](../assets/clinical/glioma-axial-mass.jpg)
+
+**3. Sagittal view — heterogeneous interior.** Side profile (eye and nose
+visible). The mass is a rounded, **blotchy** region with an **ill-defined
+border** — the infiltrative, heterogeneous texture (mixed necrosis and active
+tumor) discussed above.
 
 ![Glioma, sagittal, heterogeneous](../assets/clinical/glioma-sagittal-heterogeneous.jpg)
 
-**3. Ring-enhancing case — axial view.** Top-down view. A ring lesion with a
-**bright active rim** and a **dark necrotic center** — the classic high-grade
-glioma signature. (The bright star-shaped structure above it is normal CSF
-around the brainstem, not tumor.)
+**4. A hard case — coronal view.** Not every glioma is obvious. Here you have to
+*hunt* for it: compare the two halves and notice a subtle asymmetric darker
+region with slightly effaced (flattened) folds on one side. This is the honest
+reality — and exactly why glioma is the model's hardest class.
 
-![Glioma, axial, ring-enhancing](../assets/clinical/glioma-axial-ring.jpg)
+![Glioma, coronal, subtle](../assets/clinical/glioma-coronal-subtle.jpg)
 
-Three images, three appearances (subtle-coronal, blotchy-sagittal, ring-axial),
-**one disease**. This variability is exactly why glioma is the hardest class for
-the model to learn.
+Four images, four appearances (coronal ring, axial mass, sagittal blotch, subtle
+coronal), **one disease**. This variability — from "screams at you" to "you have
+to hunt" — is exactly why glioma is the hardest class for the model to learn.
 
 ### Relevance to NeuroLens
 
 - **Aggressive + time-critical** (GBM ~15-month median survival) → motivates an
   automated MRI triage tool with real clinical value.
-- **Morphologically variable** (three very different appearances above) → this
+- **Morphologically variable** (four very different appearances above) → this
   is the model's **hardest class**, reflected in its lowest per-class score
   (F1 ≈ 0.90 in the Phase 1 single-fold result). The model must learn the
   *concept* of glioma, not a fixed appearance — which is why it needs ~1,400
