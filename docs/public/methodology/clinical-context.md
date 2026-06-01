@@ -205,7 +205,121 @@ to hunt" — is exactly why glioma is the hardest class for the model to learn.
 
 ## Meningioma
 
-_To be documented next._
+### What it is
+
+A **meningioma** arises from **arachnoid cap cells** — cells in the *arachnoid
+mater*, the middle of the three membrane layers (the **meninges**) that wrap the
+brain. Because it grows *from the membrane inward*, a meningioma sits **outside**
+the brain tissue (**extra-axial**) and pushes the brain inward, rather than
+infiltrating it from within like a glioma.
+
+The diagram below shows where these layers sit — and therefore where a
+meningioma originates (the arachnoid, just under the dura, hugging the outside
+of the brain):
+
+![Layers of scalp, skull, meninges and brain (coronal section)](../assets/clinical/meninges-layers-coronal.png)
+
+*Coronal section showing, from outside in: scalp/galea, skull, periosteal and
+meningeal dura mater, subdural space, **arachnoid** (where meningiomas arise),
+subarachnoid space (CSF), and pia mater against the brain. Illustration by
+Nadezdha D. Kiriyak and Gwendolyn Mack, [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Illustration_demonstrating_the_layers_of_scalp,_skull,_meninges_and_brain_on_a_coronal_section.webp),
+CC BY 4.0.*
+
+It is the **most common primary brain tumor**, more frequent in women, and is
+often discovered **incidentally** (found on a scan done for another reason, with
+no symptoms).
+
+### Grading — the WHO scale (mostly benign)
+
+Unlike glioma, meningioma is **predominantly benign**:
+
+| Grade | Behavior | Share of cases | 5-year survival |
+|-------|----------|----------------|-----------------|
+| **1** | **Benign** | **80%** | **92%** |
+| 2 | Atypical (intermediate) | 18% | 78% |
+| 3 | Anaplastic (malignant) | 2% | 47% |
+
+This is the opposite end of the spectrum from glioblastoma (~15-month median
+survival) — yet, as the images show, meningioma is the *brighter*, more
+striking-looking tumor. Appearance does not equal severity.
+
+### How it appears on MRI — recognition checklist
+
+The mirror image of the glioma checklist:
+
+| Sign | What to look for |
+|------|------------------|
+| **Extra-axial (peripheral)** | sits at the brain's edge, attached to skull/dura — not deep inside |
+| **Well-defined border** | clean, rounded edge you could trace with a circle (vs glioma's blurry infiltration) |
+| **Homogeneous bright enhancement** | uniform brightness with contrast (vs glioma's blotchy necrosis) |
+| **Broad base against dura** | attached along the membrane, pushing the brain inward |
+| **Dural tail sign** | a tapering thickening of the dura extending from the tumor (see below) |
+
+**Why it lights up so uniformly.** The brightness is the contrast agent
+(gadolinium) accumulating in the tumor. A meningioma is highly vascular *and*
+lives **outside the blood–brain barrier**, so contrast floods in freely; being
+solid (no necrosis), it fills evenly → **homogeneous bright** enhancement. A
+high-grade glioma sits inside the barrier and has a dead necrotic center, so it
+enhances **heterogeneously** (bright rim, dark core). **Bright ≠ malignant** — a
+benign meningioma can outshine a malignant glioma.
+
+**The dural tail sign.** A classic (and nearly characteristic) clue: the dura
+adjacent to the tumor thickens and **tapers off** as it leaves the tumor base.
+Seen in ~60–72% of meningiomas on contrast-enhanced MRI. On a 2D slice cutting
+through the base, the thickening appears to taper away on *both* sides of the
+attachment point. The tail also reveals *where* the tumor was born — along the
+falx (a falcine meningioma) or under the skull (a convexity meningioma).
+
+### Example images (from the training set — real, not augmented)
+
+> All examples below are **real** scans (`Tr-me_*`). The dataset's augmented
+> meningioma images (`Tr-aug-me_*`) are deliberately excluded from teaching —
+> see [`dataset.md`](dataset.md#known-limitations) for why this matters.
+
+**1. Classic case — sagittal view.** A large, bright, round, **well-defined**
+mass sitting at the periphery against the inner skull, pushing the brain inward.
+Clean border, uniform brightness — the textbook meningioma.
+
+![Meningioma, sagittal, classic](../assets/clinical/meningioma-sagittal-classic.jpg)
+
+**2. Coronal view.** A bright, sharply-bordered enhancing mass — note how
+distinct its edge is compared with a glioma's blurry boundary.
+
+![Meningioma, coronal](../assets/clinical/meningioma-coronal.jpg)
+
+**3. Falcine meningioma — axial view.** Top-down view. The mass sits beside the
+midline, attached to the **falx cerebri** (the dural sheet between the
+hemispheres). The bright line running from the tumor toward the midline is the
+thickened falx — a **dural tail** pointing to where the tumor originated.
+
+![Meningioma, axial, falcine with dural tail](../assets/clinical/meningioma-axial-falcine-dural-tail.jpg)
+
+**4. Convexity meningioma — dural tail on both sides.** A small, round mass
+against the inner skull. Where the slice cuts through its base, the thickened
+dura **tapers off on both sides** of the attachment — the dural tail seen in
+cross-section (not two separate tails, but one thickening viewed end-on).
+
+![Meningioma, convexity, dural tail](../assets/clinical/meningioma-convexity-dural-tail.jpg)
+
+### Relevance to NeuroLens
+
+- **Clear visual signature** (bright + round + peripheral + dural tail) → in
+  principle an *easier* class than glioma. Its Phase 1 single-fold F1 (≈ 0.93)
+  sat between glioma (0.90) and pituitary (0.99).
+- **Carries an asterisk, though.** ~26% of the meningioma *test* images are
+  synthetic (augmented). Its F1 may be **inflated** and deserves a clean
+  re-evaluation on real-only test data — see [`dataset.md`](dataset.md#known-limitations).
+- **Opposite severity from glioma.** Clinically, confusing a glioma (often
+  urgent) with a meningioma (often benign, sometimes just monitored) is a
+  serious error. This class pair is worth scrutinizing in the confusion matrix
+  and in the Phase 3 XAI analysis.
+
+### Sources
+
+- [Meningiomas — American Association of Neurological Surgeons (AANS)](https://www.aans.org/patients/conditions-treatments/meningiomas/)
+- [Meningioma — Johns Hopkins Medicine](https://www.hopkinsmedicine.org/health/conditions-and-diseases/meningioma)
+- [Meningioma — StatPearls, NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK560538/)
+- [A review on dural tail sign — NCBI](https://pmc.ncbi.nlm.nih.gov/articles/PMC2999017/)
 
 ## Pituitary tumor
 

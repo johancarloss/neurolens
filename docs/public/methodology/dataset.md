@@ -128,14 +128,43 @@ here, so a high accuracy genuinely reflects learning.
 
 ## Known limitations
 
-These are limitations we acknowledge and discuss in the final report — they are not novel discoveries:
-
 1. **No patient metadata**: the dataset has no demographic, scanner, or temporal information. We cannot stratify performance by patient subgroup or scanner type.
 2. **Aggregated from heterogeneous sources**: figshare + SARTAJ + Br35H were originally separate datasets. Slight differences in scanner protocol, slice thickness, and orientation exist across subsets and are absorbed into the noise.
 3. **2D slices only**: brain tumors are 3D structures. A single 2D slice may not show the full tumor extent. Clinical practice uses 3D volumes. Out of scope for this work.
 4. **No segmentation**: classification only (which class). Segmentation (where the tumor is, pixel by pixel) is a separate task, also out of scope.
+5. **Augmented images in the meningioma class** (our own finding — see below).
 
-These limitations are inherent to the dataset and **shared with the baseline papers** we compare against (Wong et al. 2025, Rahman et al. 2025), so they do not affect comparison validity.
+Limitations 1–4 are inherent to the dataset and **shared with the baseline papers** we compare against (Wong et al. 2025, Rahman et al. 2025), so they do not affect comparison validity.
+
+### The meningioma augmentation issue
+
+Inspecting the actual files (by filename prefix) revealed that **only the
+meningioma class contains augmented (synthetic) images** — the other three
+classes are 100% real scans:
+
+| Class | Real (train / test) | Augmented (train / test) |
+|-------|---------------------|--------------------------|
+| glioma | 1,400 / 400 | 0 / 0 |
+| **meningioma** | **1,300 / 297** | **100 (`Tr-aug-me`) / 103 (`Te-aug-me`)** |
+| notumor | 1,400 / 400 | 0 / 0 |
+| pituitary | 1,400 / 400 | 0 / 0 |
+
+This explains the "perfect balance" above: meningioma originally had fewer
+images, and synthetic copies were generated to pad each split to the round
+1,400 / 400.
+
+**Why this matters.** Roughly **26% of the meningioma test set is synthetic**
+(`Te-aug-me`, 103 of 400). A test set should measure generalization to *real*
+data. If those augmented test images are transforms of training images, this is
+**data leakage** and would **inflate** the meningioma metric. We cannot confirm
+leakage without pixel-level comparison, but the mere presence of synthetic
+images in the test set is a methodological flag.
+
+**How we handle it.** We report meningioma's metric with this caveat, use only
+**real** images (`Tr-me_*`) for the clinical illustrations in
+[`clinical-context.md`](clinical-context.md), and plan a **clean re-evaluation**
+on the real-only test subset (excluding `Te-aug-me`) to obtain an honest
+meningioma score. The other three classes are unaffected.
 
 ---
 
