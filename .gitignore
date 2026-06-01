@@ -19,6 +19,9 @@ docker/postgres-ssl/*.pem
 # Documentação privada (notas internas, rascunhos, correspondência)
 docs/private/
 
+# Instruções internas de trabalho (não públicas)
+CLAUDE.md
+
 # Outputs locais de execução remota
 output/
 kernel-output/
