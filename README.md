@@ -77,7 +77,7 @@ for the full reproducibility checklist.
 ## Dataset
 
 [Brain Tumor MRI Dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset)
-by Masoud Nickparvar — 7,023 images across 4 classes (glioma,
+by Masoud Nickparvar — 7,200 images across 4 balanced classes (glioma,
 meningioma, pituitary tumor, no tumor). Full details in
 [`docs/public/methodology/dataset.md`](docs/public/methodology/dataset.md).
 

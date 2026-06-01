@@ -47,7 +47,7 @@ See the reference docs for details:
 
 - **Model**: VGG16 + transfer learning + 2-stage training — [`methodology/model.md`](../methodology/model.md)
 - **Training**: 5-fold stratified CV, hyperparameters, dual-write tracking — [`methodology/training.md`](../methodology/training.md)
-- **Dataset**: 7,023 brain MRI scans, 4 classes — [`methodology/dataset.md`](../methodology/dataset.md)
+- **Dataset**: 7,200 brain MRI scans, 4 balanced classes — [`methodology/dataset.md`](../methodology/dataset.md)
 - **Metrics**: accuracy, F1, confusion matrix — [`methodology/metrics.md`](../methodology/metrics.md)
 
 The full pipeline runs as a single command — the Kaggle runner reads `active_run.yaml`, dispatches into `run_vgg16.main()`, and produces:

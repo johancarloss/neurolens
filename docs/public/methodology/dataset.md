@@ -19,17 +19,31 @@ The dataset is a community-curated bundle, not a clinical-grade benchmark. It is
 
 ## Composition
 
-**7,023 grayscale MRI slices**, all 2D, across **4 mutually exclusive classes**:
+**7,200 grayscale MRI slices**, all 2D, across **4 mutually exclusive classes**.
+Counts below are **verified by counting the files in the downloaded dataset**
+(not taken from secondary sources):
 
 | Class | Description | Training | Testing | Total |
 |-------|-------------|----------|---------|-------|
-| `glioma` | Tumor arising from glial cells (the supportive tissue of the brain) | 1,321 | 300 | 1,621 |
-| `meningioma` | Tumor of the meninges (membranes covering the brain) | 1,339 | 306 | 1,645 |
-| `notumor` | MRI scan without any visible tumor | 1,595 | 405 | 2,000 |
-| `pituitary` | Tumor of the pituitary gland at the base of the brain | 1,457 | 300 | 1,757 |
-| **Total** | | **5,712** | **1,311** | **7,023** |
+| `glioma` | Tumor arising from glial cells (the supportive tissue of the brain) | 1,400 | 400 | 1,800 |
+| `meningioma` | Tumor of the meninges (membranes covering the brain) | 1,400 | 400 | 1,800 |
+| `notumor` | MRI scan without any visible tumor | 1,400 | 400 | 1,800 |
+| `pituitary` | Tumor of the pituitary gland at the base of the brain | 1,400 | 400 | 1,800 |
+| **Total** | | **5,600** | **1,600** | **7,200** |
 
-Class balance is reasonable (no class is below 18% of the dataset), so accuracy is a meaningful metric here — see [`metrics.md`](metrics.md).
+The dataset is **perfectly balanced** — exactly 1,400 training and 400 testing
+images per class (25% each). Accuracy is therefore a meaningful headline metric
+here, though we always report macro F1 alongside it — see [`metrics.md`](metrics.md).
+
+> **Note on figures.** The commonly cited composition for this dataset is
+> ~7,023 images with uneven per-class counts. The copy currently distributed on
+> Kaggle (and the copy our Phase 1 run trained on) is the balanced 7,200-image
+> version above. We use the verified counts; the 1,600-image test set is
+> independently confirmed by our Phase 1 run, which produced exactly 1,600
+> predictions per fold.
+
+For the medical background of each class — what each tumor is, how it arises,
+and how it appears on MRI — see [`clinical-context.md`](clinical-context.md).
 
 ---
 
@@ -37,23 +51,23 @@ Class balance is reasonable (no class is below 18% of the dataset), so accuracy 
 
 The dataset author **already provides** a `Training/` and `Testing/` partition. We **respect that boundary**:
 
-- `Training/` (5,712 images) — used for 5-fold stratified cross-validation
-- `Testing/` (1,311 images) — held-out test set, never touched during CV
+- `Training/` (5,600 images) — used for 5-fold stratified cross-validation
+- `Testing/` (1,600 images) — held-out test set, never touched during CV
 
 This protects against information leakage. The test set is a true generalization benchmark, evaluated only **after** model selection.
 
 ```
 Training/                 → 5-fold stratified CV
-├── glioma/      (1,321)     fold 0: train 80%, validate 20%
-├── meningioma/  (1,339)     fold 1: train 80%, validate 20%
-├── notumor/     (1,595)     ...
-└── pituitary/   (1,457)     fold 4: train 80%, validate 20%
+├── glioma/      (1,400)     fold 0: train 80%, validate 20%
+├── meningioma/  (1,400)     fold 1: train 80%, validate 20%
+├── notumor/     (1,400)     ...
+└── pituitary/   (1,400)     fold 4: train 80%, validate 20%
 
 Testing/                  → Held-out evaluation only
-├── glioma/      (300)
-├── meningioma/  (306)
-├── notumor/     (405)
-└── pituitary/   (300)
+├── glioma/      (400)
+├── meningioma/  (400)
+├── notumor/     (400)
+└── pituitary/   (400)
 ```
 
 See [`training.md`](training.md) for cross-validation details.
@@ -95,15 +109,20 @@ VGG16 (and ResNet50 in Phase 2) are pretrained on ImageNet. Their input distribu
 
 ---
 
-## Class imbalance considerations
+## Class balance
 
-The class distribution is **mildly imbalanced** (max/min = 2,000 / 1,621 ≈ 1.23). This is gentle enough that:
+The class distribution is **perfectly balanced** — 1,400 training and 400 testing
+images per class (a 1:1 ratio across all four classes). This is the ideal case:
 
-- No class re-weighting is applied during loss computation
-- Stratified sampling in CV ensures each fold preserves the global class ratio
-- **Macro F1** is reported alongside accuracy, so rare-class performance is not hidden — see [`metrics.md`](metrics.md)
+- No class re-weighting, focal loss, or oversampling is needed during training
+- Stratified sampling in CV keeps every fold balanced (each fold's validation
+  split holds ~25% of each class)
+- Accuracy is not skewed by a dominant class, so it is a trustworthy headline
+  metric; **macro F1** is still reported alongside it to expose any per-class
+  weakness the model develops — see [`metrics.md`](metrics.md)
 
-If imbalance were severe (e.g., 10:1), we would consider focal loss, class weights, or oversampling. Not needed here.
+A degenerate "always predict the majority class" classifier would score only 25%
+here, so a high accuracy genuinely reflects learning.
 
 ---
 

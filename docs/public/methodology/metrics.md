@@ -7,7 +7,7 @@
 
 ## What we measure
 
-Each NeuroLens run produces, on the held-out test set (1,311 images):
+Each NeuroLens run produces, on the held-out test set (1,600 images):
 
 1. **Overall accuracy** — global correctness
 2. **Per-class precision, recall, F1** — class-level breakdown
@@ -27,7 +27,7 @@ $$
 
 The most intuitive metric. **Value range**: 0 to 1.
 
-**When it fails to be informative**: severely imbalanced datasets. If 90% of the dataset is class A, a degenerate classifier that always predicts A scores 90% accuracy without learning anything. The Brain Tumor MRI dataset is **mildly imbalanced** (1.23:1 max/min ratio), so accuracy is meaningful here — but we always report it alongside macro F1.
+**When it fails to be informative**: severely imbalanced datasets. If 90% of the dataset is class A, a degenerate classifier that always predicts A scores 90% accuracy without learning anything. The Brain Tumor MRI dataset is **perfectly balanced** (1,400 images per class in training, 25% each), so this failure mode does not apply — a trivial majority-class classifier would score only 25%. Accuracy is therefore trustworthy here, but we still report it alongside macro F1 to expose per-class weaknesses.
 
 ---
 

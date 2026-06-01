@@ -12,7 +12,7 @@ Wong et al. (2025) used a single 80/10/10 train/val/test split. We use **5-fold 
 
 ### What it means
 
-The training partition (5,712 images) is divided into **5 folds of equal size**, each containing ~1,142 images. For each fold *k* ∈ {0, 1, 2, 3, 4}:
+The training partition (5,600 images) is divided into **5 folds of equal size**, each containing ~1,120 images. For each fold *k* ∈ {0, 1, 2, 3, 4}:
 
 ```
 fold k → validation set   (~20% of training partition)
@@ -26,8 +26,8 @@ Five complete training runs are executed — one per fold — and final metrics 
 A naive random split could place all `pituitary` examples in a single fold, leaving other folds with none. Stratification ensures each fold preserves the **global class distribution**:
 
 ```
-Global ratio:   glioma 23.1%  meningioma 23.4%  notumor 27.9%  pituitary 25.5%
-Each fold:      glioma 23.1%  meningioma 23.4%  notumor 27.9%  pituitary 25.5%
+Global ratio:   glioma 25%  meningioma 25%  notumor 25%  pituitary 25%
+Each fold:      glioma 25%  meningioma 25%  notumor 25%  pituitary 25%
 ```
 
 This is implemented via `sklearn.model_selection.StratifiedKFold` with a fixed seed (42).
@@ -43,7 +43,7 @@ The Kaggle Kernels free tier caps single sessions at **9 hours**. 5-fold fits co
 
 ### Why not the held-out test set during CV?
 
-The `Testing/` partition (1,311 images) is **never seen** during cross-validation. It is reserved for the final evaluation **after** training is complete. This protects against any form of test-set contamination.
+The `Testing/` partition (1,600 images) is **never seen** during cross-validation. It is reserved for the final evaluation **after** training is complete. This protects against any form of test-set contamination.
 
 Implementation: [`src/neurolens/training/cv.py`](../../../src/neurolens/training/cv.py).
 
@@ -113,7 +113,7 @@ A single `CompositeLogger` instance writes every metric to **three independent s
 - Per training run, persists:
   - 1 row in `runs` with config + final metrics
   - ~50 rows in `metrics` (1 per epoch × multiple metric keys)
-  - ~1,400 rows in `predictions` (1 per test-set image with predicted class + ground truth + probabilities + correctness)
+  - 1,600 rows in `predictions` (1 per test-set image with predicted class + ground truth + probabilities + correctness)
 - Bulk inserts via `psycopg2.extras.execute_values` (a single round-trip per ~1,600 predictions, vs ~1,600 SSL handshakes — see [Phase 1 retrospective](../phases/phase-1-vgg16-baseline.md))
 
 ### Sink 3 — JSONL local file
