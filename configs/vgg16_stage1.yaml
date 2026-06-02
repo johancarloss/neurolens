@@ -31,9 +31,9 @@ seed: 42
 
 # Cross-validation (5-fold stratified, inspired by Rahman et al. 2025)
 cv_folds: 5
-# target_fold: 0 means only fold 0 runs (single-fold sanity check before all 5).
-# Set to null after fold 0 passes to run all 5 folds in one Save & Run All.
-target_fold: 0
+# target_fold: 0 runs a single fold (sanity check); null runs all 5 folds.
+# Phase A (fold 0) passed (test_acc 0.9431) — now the full 5-fold run (Phase B).
+target_fold: null
 
 # Early stopping disabled by default to stay faithful to Wong's 50-epoch fixed schedule
 early_stopping_patience: null
