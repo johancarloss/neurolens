@@ -133,6 +133,7 @@ here, so a high accuracy genuinely reflects learning.
 3. **2D slices only**: brain tumors are 3D structures. A single 2D slice may not show the full tumor extent. Clinical practice uses 3D volumes. Out of scope for this work.
 4. **No segmentation**: classification only (which class). Segmentation (where the tumor is, pixel by pixel) is a separate task, also out of scope.
 5. **Augmented images in the meningioma class** (our own finding — see below).
+6. **Mixed imaging modality in the `notumor` class** (our own finding — see below).
 
 Limitations 1–4 are inherent to the dataset and **shared with the baseline papers** we compare against (Wong et al. 2025, Rahman et al. 2025), so they do not affect comparison validity.
 
@@ -165,6 +166,33 @@ images in the test set is a methodological flag.
 [`clinical-context.md`](clinical-context.md), and plan a **clean re-evaluation**
 on the real-only test subset (excluding `Te-aug-me`) to obtain an honest
 meningioma score. The other three classes are unaffected.
+
+### The notumor modality issue
+
+Visually inspecting the `notumor` class, **some images appear to be CT scans
+rather than MRI** — recognizable by a uniformly bright, thick skull and low
+gray/white-matter contrast (characteristic of CT), versus the dark skull and
+strong tissue contrast of MRI. The three tumor classes appear to be **MRI
+only**.
+
+**Why this matters.** If `notumor` mixes in CT while the tumor classes are
+MRI-only, the model can learn a **modality shortcut**: "looks like CT →
+notumor." It would then decide by *imaging modality* rather than by *pathology*
+— and a CT that actually contains a tumor could be classified as normal. This is
+a classic spurious-correlation / dataset-bias risk, and it may partly explain a
+comfortably high notumor score.
+
+**Honest calibration.** We are **inferring modality from pixels**, not metadata
+(the dataset provides no DICOM headers). We sampled a handful of images and saw
+a clear CT-like appearance in a minority; we have **not** quantified the exact
+fraction, which would need a systematic pass or expert review. The visual signal
+is strong enough to flag, not strong enough to put a precise number on.
+
+**How we handle it.** We document it as a limitation, and make it an explicit
+target for the **Phase 3 XAI analysis**: Grad-CAM / LIME / SHAP on `notumor`
+predictions should reveal whether the model attends to brain content or to
+skull/modality artifacts. If the latter, the confound is real and must be
+discussed in the final report.
 
 ---
 

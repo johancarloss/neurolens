@@ -418,4 +418,67 @@ That positional consistency is the whole story of this class.
 
 ## No tumor (negative class)
 
-_To be documented._
+### What it is
+
+This class is **not a tumor** — it is a **normal brain scan**, the *negative*
+(control) class. For the model to be useful it must learn not only the three
+tumor patterns but also the **absence of pathology** — what a healthy brain
+looks like — so it can say "nothing here" with confidence.
+
+### How to recognize a normal brain — the inverse checklist
+
+Reading a normal scan uses the *same tools* as the tumor classes, but you are
+confirming that the expected normal features are **present and undisturbed**:
+
+| Sign of normality | What to confirm |
+|-------------------|-----------------|
+| **Symmetry preserved** | the two hemispheres mirror each other — nothing stands out on one side |
+| **Normal ventricles** | the central CSF spaces are symmetric, neither compressed nor displaced |
+| **No mass / no mass effect** | midline structures centered; the brain folds (sulci) present on both sides |
+| **No abnormal enhancement** | no suspicious bright spot |
+
+It is the exact opposite exercise to the glioma hunt: here, *not finding*
+anything that breaks the symmetry is the correct reading.
+
+### Example images (from the training set — all real)
+
+**1. Normal brain — T2-weighted MRI (axial).** CSF appears bright. Symmetric
+hemispheres, normal symmetric ventricles, no mass.
+
+![Normal brain, T2 MRI](../assets/clinical/notumor-normal-t2.jpg)
+
+**2. Normal brain — FLAIR MRI (axial).** CSF suppressed (dark). Again fully
+symmetric with no focal abnormality.
+
+![Normal brain, FLAIR MRI](../assets/clinical/notumor-normal-flair.jpg)
+
+### A caveat — mixed imaging modality in this class
+
+While inspecting the `notumor` images we found that **some of them appear to be
+CT scans, not MRI** — note the uniformly bright, thick skull and the low
+gray/white-matter contrast below, which is characteristic of CT:
+
+![Normal brain, CT-like appearance](../assets/clinical/notumor-ct-like.jpg)
+
+This matters: the three tumor classes appear to be **MRI only**, so if `notumor`
+mixes in CT, the model could learn a **shortcut** — "looks like CT → no tumor" —
+classifying by *imaging modality* rather than by *pathology*. A CT with a tumor
+could then be wrongly called normal. We flag this honestly (we are inferring
+modality from pixels, not metadata) and treat it as a key thing for the Phase 3
+XAI to probe. Full discussion: [`dataset.md`](dataset.md#known-limitations).
+
+### Relevance to NeuroLens
+
+- **The anchor class.** Distinguishing "tumor vs no tumor" is the most clinically
+  fundamental decision; `notumor` is what makes that possible. Its Phase 1
+  single-fold F1 was ≈ 0.95.
+- **A built-in confound to watch.** The modality mix above means a high `notumor`
+  score could partly reflect an *easy but spurious* modality cue rather than true
+  understanding of normal anatomy. Grad-CAM / LIME / SHAP (Phase 3) should reveal
+  whether the model attends to brain content or to skull/modality artifacts — a
+  central question for our critical analysis.
+
+### Sources
+
+- [Emerging Techniques in Brain Tumor Imaging: What Radiologists Need to Know — NCBI](https://pmc.ncbi.nlm.nih.gov/articles/PMC5007387/)
+- [Benign MRI findings and their pathologic mimics — NCBI](https://pmc.ncbi.nlm.nih.gov/articles/PMC5765951/)
