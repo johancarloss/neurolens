@@ -1,7 +1,7 @@
 # Phase 1 — VGG16 Baseline
 
-> **Status:** Pipeline complete, single-fold sanity check **passed**.
-> Full 5-fold execution pending (estimated ~5h 25min on Kaggle T4).
+> **Status:** ✅ **Phase 1 complete** — full 5-fold cross-validation executed.
+> **Headline:** test accuracy **94.11% ± 0.56%**, macro F1 **94.01% ± 0.59%** (5 folds).
 > **Last updated:** 2026-06-02
 
 ---
@@ -59,75 +59,82 @@ The full pipeline runs as a single command — the Kaggle runner reads `active_r
 
 ---
 
-## Results — single-fold sanity check (fold 0)
+## Results — full 5-fold cross-validation
 
-A single-fold sanity check was executed end-to-end before committing to the full 5-fold run. **All systems functioned as designed.**
+All five folds ran end-to-end on a Kaggle T4 GPU (**~5h 11min** total). Each fold's accuracy was independently re-computed from the durable PostgreSQL predictions (`is_correct`) and matched the run log to four decimals — see [Validation and reproducibility](#validation-and-reproducibility).
 
-### Headline metrics
+### Headline (5-fold mean ± std)
 
 | Metric | Value |
 |--------|-------|
-| **Test accuracy** | **0.9431** |
-| **Macro F1** | **0.9421** |
-| **Weighted F1** | **0.9421** |
+| **Test accuracy** | **94.11% ± 0.56%** |
+| **Macro F1** | **94.01% ± 0.59%** |
 
-### Per-class F1 (test set)
+### Per-fold results
+
+| Fold | Test accuracy | Macro F1 |
+|------|---------------|----------|
+| 0 | 0.9431 | 0.9421 |
+| 1 | 0.9444 | 0.9436 |
+| 2 | 0.9425 | 0.9416 |
+| 3 | 0.9444 | 0.9433 |
+| 4 | 0.9313 | 0.9297 |
+
+Folds 0–3 cluster tightly around 94.3%; fold 4 sits ~1.3 pp lower — ordinary CV variance, and exactly why the **mean ± std** (not a single split) is the figure we report. The tight **±0.56%** std shows the model generalizes consistently across splits.
+
+### Per-class F1 (5-fold mean ± std)
 
 | Class | F1 |
-|-------|-------|
-| glioma | 0.8995 |
-| meningioma | 0.9288 |
-| notumor | 0.9513 |
-| **pituitary** | **0.9889** |
+|-------|-----|
+| **pituitary** | **0.9886 ± 0.0069** |
+| notumor | 0.9536 ± 0.0034 |
+| meningioma | 0.9253 ± 0.0105 |
+| **glioma** | **0.8926 ± 0.0077** |
 
-### Training trajectory (fold 0)
+### Confusion matrix (aggregate over the 5 folds, 8000 predictions)
 
-| Stage | Best epoch | Best val_acc | Duration |
-|-------|------------|--------------|----------|
-| Stage 1 (head only, LR=1e-3) | 47 / 50 | 0.9634 | ~30 min |
-| Stage 2 (conv5 + head, LR=1e-4) | 44 / 50 | **0.9768** | ~33 min |
-| Test set evaluation + bulk persistence | — | — | ~10 s |
-| **Total wall-clock** | | | **~65 min** |
+![VGG16 aggregate confusion matrix](../assets/phase-1-confusion-matrix.png)
 
-W&B dashboards:
+The matrix refines the per-class story:
 
-- Stage 1 run: <https://wandb.ai/johancarlos62-ufpb/neurolens/runs/3vy5o58l>
-- Stage 2 run: <https://wandb.ai/johancarlos62-ufpb/neurolens/runs/3il23w2k>
+- **Glioma recall is the weak spot (82.2%).** One in five gliomas is missed — classified as meningioma (10.0%, 199 cases) or notumor (7.8%, 156 cases). Its *precision* stays high (~0.98), so glioma's low F1 is a **recall** problem, not precision.
+- **glioma → notumor (156 cases) is the clinically most serious error** — a tumor read as "no tumor" (a false negative for cancer). A priority for the Phase 3 XAI to examine.
+- **notumor (99.8%) and pituitary (99.5%) are near-perfect** — consistent/fixed visual cues make a class easy.
+- The glioma↔meningioma confusion predicted in [`clinical-context.md`](../methodology/clinical-context.md) is real but **asymmetric** (199 glioma→meningioma vs 32 the reverse).
 
 ---
 
 ## Comparison with Wong et al. (2025)
 
-| Aspect | Wong et al. (Keras) | NeuroLens fold 0 (PyTorch) |
-|--------|--------------------|-----------------------------|
-| Reported test accuracy | 0.9924 (single split) | 0.9431 (single fold of 5) |
-| Validation accuracy (best) | not reported per-stage | 0.9768 (Stage 2 epoch 44) |
-| Cross-validation | None (single 80/10/10) | 5-fold stratified (mean ± std pending) |
-| Training time | not reported | 65 min / fold on Kaggle T4 |
+| Aspect | Wong et al. (Keras) | NeuroLens (PyTorch) |
+|--------|--------------------|----------------------|
+| Reported test accuracy | 0.9924 (single split) | **0.9411 ± 0.0056** (5-fold mean) |
+| Best validation accuracy | not reported per-stage | ~0.97–0.98 per fold |
+| Cross-validation | None (single 80/10/10) | 5-fold stratified |
+| Training time | not reported | ~65 min / fold on Kaggle T4 |
 
-Direct numerical comparison with Wong et al. requires the full 5-fold mean. Fold 0 alone is 4–5 pp below their headline number; this is **within the expected variance** for a single fold of a CV scheme. The 5-fold mean is the proper comparison target.
+We land **~5 pp below** Wong's headline (and ~3 pp below our own 97–99% target). We report this honestly rather than tuning toward it — and the most likely explanation is **not the model but the split**:
 
-Two non-overlapping sources of difference also need to be acknowledged:
+- During training, per-fold **validation** accuracy reached **~0.97–0.98** (close to Wong). Only the held-out **test** accuracy drops to ~0.94 — a **validation→test gap of ~3–4 pp**.
+- CV validation is drawn from the same `Training/` distribution; the `Testing/` partition is a **separate, held-out source**. The gap reflects a genuine distribution shift between the two partitions, not under-training (train accuracy reached ~0.99).
+- **Hypothesis (we cannot verify Wong's exact protocol):** Wong likely used a single random split of the pooled data, making their test set same-distribution as train (easier → higher). We respect the dataset author's `Training/` vs `Testing/` separation — a harder, more honest split. Our number is more conservative and arguably more trustworthy, even if lower.
 
-1. **Framework difference**: Keras `ImageDataGenerator` and PyTorch `transforms.v2` are not bit-identical. Different RNG, slightly different interpolation defaults.
-2. **Normalization difference**: Wong used `rescale=1/255`. We use ImageNet mean/std (the correct convention for ImageNet-pretrained PyTorch backbones). See [methodology/model.md](../methodology/model.md#methodological-deviations-from-wong-et-al).
-
-These differences are documented and intentional. The goal is replication of *methodology*, not bit-for-bit reproduction of Wong's *code* — Wong's code is Keras and ours is PyTorch.
+Two smaller, intentional deviations also contribute (both documented in [`model.md`](../methodology/model.md#methodological-deviations-from-wong-et-al)): Keras vs PyTorch augmentation RNG, and `rescale=1/255` vs ImageNet normalization. The goal is replication of *methodology*, not bit-for-bit reproduction of Keras code.
 
 ---
 
 ## Per-class analysis
 
-The per-class F1 spread is the most informative result from fold 0:
+The per-class F1 spread, stable across all 5 folds, is the most informative result:
 
 ```
 pituitary    0.989  ─┐
-notumor      0.951   │
-meningioma   0.929   │
-glioma       0.900  ─┘   ←  10 pp spread
+notumor      0.954   │
+meningioma   0.925   │
+glioma       0.893  ─┘   ←  ~10 pp spread (5-fold means)
 ```
 
-This pattern is not an artifact — it reflects the **morphology** of each class:
+This pattern is not an artifact (it held across every fold) — it reflects the **morphology** of each class:
 
 - **Pituitary** tumors appear in a fixed anatomical location (the sella turcica, at the base of the brain). Their localization is a strong, position-based feature that a CNN learns quickly.
 - **Notumor** scans have a distinctive absence of mass effect. The model learns this as a "negative space" pattern.
@@ -169,41 +176,45 @@ Each level validates a specific layer: micro confirms plumbing, small measures r
 
 ---
 
-## What's pending
+## Phase 1 status: complete
 
-To declare Phase 1 fully complete:
+- [x] Full 5-fold cross-validation executed (94.11% ± 0.56%)
+- [x] Mean ± std test accuracy + per-class F1 computed
+- [x] Aggregate confusion matrix figure generated
+- [x] Comparison with Wong et al. (with honest gap analysis)
+- [x] Results cross-validated against the durable PostgreSQL source of truth
 
-- [ ] Execute the full 5-fold run (`target_fold: null` in both stage configs), estimated **~5h 25min**
-- [ ] Compute mean ± std test accuracy across the 5 folds
-- [ ] Generate publishable confusion matrix figure and per-class F1 bar chart
-- [ ] Compare 5-fold mean against Wong et al. headline (0.9924)
-- [ ] Final Phase 1 retrospective update with full results
+Phase 1 delivered a correct, durable, reproducible VGG16 baseline. We are **not** chasing further gains here now — the items below are parked with enough context to resume later.
 
-The single-fold sanity check confirms the pipeline is correct, durable, and reproducible. Phase 2 (multi-architecture, ResNet50) can begin in parallel with the full 5-fold execution — the registry pattern in `models/factory.py` makes ResNet50 a one-line addition.
+## Future improvements (parked)
+
+Real opportunities to raise the number or deepen the analysis, deliberately deferred so the project can advance to Phase 2. Phase 2 (ResNet50) results may also inform several of them.
+
+1. **Clean meningioma re-evaluation.** ~26% of the meningioma *test* images are synthetic (`Te-aug-me`), and meningioma was the most variable class (±1.05). Re-evaluate on the real-only test subset (exclude `Te-aug-me`) for an honest meningioma F1. → touch points: [`dataset.md` Known limitations](../methodology/dataset.md#known-limitations) + `evaluator.py`.
+2. **Investigate the validation→test gap (~3–4 pp).** Confirm whether `Testing/` is a genuinely harder distribution than `Training/` (e.g., compare class-wise intensity/size statistics, or train on a pooled random split and compare). Explains the gap with Wong and is strong material for the final report's critical discussion.
+3. **Close the gap to the 97–99% target.** Options to try *after* the multi-architecture comparison: a learning-rate schedule, more epochs with early stopping, unfreezing conv4 in addition to conv5, or test-time augmentation. Resist over-tuning — replication, not SOTA, is the Phase 1 goal.
+4. **Glioma recall + the glioma→notumor false negatives.** The 156 gliomas read as "no tumor" are the most clinically serious errors; the Phase 3 XAI should examine what the model attends to on those cases.
+
+Phase 2 (multi-architecture, ResNet50) is the next step — the `_MODEL_BUILDERS` registry in `models/factory.py` makes adding it a one-line change.
 
 ---
 
-## Reproducibility
+## Validation and reproducibility
 
-To reproduce the single-fold result reported above:
+**Dual-source validation.** Every fold's test accuracy was re-computed from the durable PostgreSQL `predictions` table (averaging `is_correct` over each fold's 1,600 rows) and matched the Kaggle run log to four decimals. All 8,000 Phase B predictions (5 × 1,600) were persisted; the dual-write (W&B + PostgreSQL + JSONL) held at production scale.
+
+**Determinism.** Fold 0 of the 5-fold run reproduced the earlier single-fold sanity check exactly (test_acc 0.9431, identical per-class) — the fixed seed (42, set for PyTorch / NumPy / Python `random` at the top of `run_vgg16.main()`) makes the pipeline deterministic. Exact outputs may differ marginally across GPUs (cuDNN nondeterminism), but macro F1 is stable to within ~0.5 pp.
+
+**To reproduce:**
 
 ```bash
-# 1. Clone at the right commit
 git clone https://github.com/johancarloss/neurolens.git
 cd neurolens
-git checkout d77ff70  # commit where target_fold: 0 was active
-
-# 2. Verify configs
-cat configs/active_run.yaml          # should point to vgg16
-cat configs/vgg16_stage1.yaml        # target_fold: 0, epochs: 50, seed: 42
-cat configs/vgg16_stage2.yaml        # target_fold: 0, epochs: 50, seed: 42
-
-# 3. On a GPU machine (or Kaggle):
+git checkout 79deb0c   # commit with target_fold: null (full 5-fold run)
 uv sync --extra dev
+# then run on a GPU machine, or push + Save & Run All on the Kaggle runner:
 uv run python -m neurolens.training.run_vgg16
 ```
-
-The seed (42) is set in PyTorch, NumPy, and Python's `random` at the top of `run_vgg16.main()`. The exact prediction outputs may differ marginally across GPUs (cuDNN nondeterminism) but the macro F1 should be stable to within ~0.5 pp.
 
 ---
 

@@ -17,8 +17,8 @@ The project is delivered in 6 phases. Each phase produces a milestone write-up h
 | Phase | Topic | Status | Write-up |
 |-------|-------|--------|----------|
 | 0 | Setup & Infrastructure | ✅ Complete | _coming next_ |
-| **1** | **VGG16 Baseline (Wong et al. replication)** | 🔄 Pipeline complete, full 5-fold pending | **[`phases/phase-1-vgg16-baseline.md`](phases/phase-1-vgg16-baseline.md)** |
-| 2 | Multi-architecture (ResNet50) | ⏸ Not started | — |
+| 1 | VGG16 Baseline (Wong et al. replication) | ✅ Complete — 94.11% ± 0.56% (5-fold) | [`phases/phase-1-vgg16-baseline.md`](phases/phase-1-vgg16-baseline.md) |
+| **2** | **Multi-architecture (ResNet50)** | 🔄 Next | — |
 | 3 | XAI analysis (Grad-CAM + LIME + SHAP) | ⏸ Not started | — |
 | 4 | Gradio demo | ⏸ Not started | — |
 | 5 | Polish & delivery | ⏸ Not started | — |

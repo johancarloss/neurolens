@@ -12,21 +12,19 @@ Course project for *Paradigmas de Aprendizagem de Máquina* (P6) at the
 
 ## Status
 
-🔄 **Phase 1 — VGG16 Baseline** (May 2026)
+✅ **Phase 1 — VGG16 Baseline complete.** 🔄 **Phase 2 (ResNet50) next.**
 
-The training pipeline is complete and end-to-end validated against the
-held-out test set in a single-fold sanity check:
+Full 5-fold stratified cross-validation, evaluated on the held-out test set:
 
 ```
-test_accuracy = 0.9431
-macro_f1      = 0.9421
-per-class F1: glioma 0.90 | meningioma 0.93 | notumor 0.95 | pituitary 0.99
+test accuracy = 94.11% ± 0.56%   (5-fold mean)
+macro F1      = 94.01% ± 0.59%
+per-class F1: glioma 0.89 | meningioma 0.93 | notumor 0.95 | pituitary 0.99
 ```
 
-Full 5-fold cross-validation execution is queued
-(estimated ~5h 25min on a Kaggle T4 GPU).
 See the **[Phase 1 write-up](docs/public/phases/phase-1-vgg16-baseline.md)**
-for full results and analysis.
+for the full results, confusion matrix, the honest comparison with
+Wong et al. (2025), and the parked future-improvement backlog.
 
 ---
 
@@ -35,7 +33,7 @@ for full results and analysis.
 Public documentation lives in [`docs/public/`](docs/public/) and grows as
 each phase completes:
 
-- **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — single-fold sanity check results, methodological deviations, what's pending
+- **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — full 5-fold results, confusion matrix, Wong et al. comparison, parked improvements
 - **Methodology references** (cross-cutting):
   - [Dataset](docs/public/methodology/dataset.md) — Brain Tumor MRI, splits, preprocessing
   - [Model](docs/public/methodology/model.md) — VGG16, transfer learning, 2-stage protocol
