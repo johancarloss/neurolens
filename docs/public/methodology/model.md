@@ -40,6 +40,26 @@ Input (3 × 224 × 224)
 
 Total parameters: **~138 million**. Pretrained weights on ImageNet (1000-class natural image dataset, ~528 MB).
 
+### How convolution and pooling actually work
+
+A **convolution filter** is a small grid of weights (e.g. 3×3) that slides across the image. At each position it multiplies-and-sums the pixels beneath it; a high output means *"the pattern this filter detects is present here."* Sliding it across the whole image produces a **feature map** — a new image marking where that pattern occurs. Because the same filter is applied everywhere, a feature is detected regardless of *where* it appears (translation invariance) — useful when a tumor can sit anywhere in the brain. The network is not given these filters; it **learns** them during training (here, the early-block filters arrive pretrained from ImageNet).
+
+"Conv 64" means **64 different filters** run in parallel, producing **64 feature maps (channels)** — one per pattern (vertical edges, textures, etc.). Each convolution is followed by **ReLU**, which zeroes negative values (keep *how present*, discard *how absent*), giving the network its non-linearity.
+
+**MaxPool** then halves the spatial size by keeping the maximum value in each 2×2 neighborhood — *"was this pattern present anywhere nearby? keep the strongest evidence."* This cuts computation and makes the network robust to small shifts of the input.
+
+*Input note:* VGG16 expects 3 (RGB) channels, but MRI is grayscale (1 channel). The single grayscale channel is **replicated three times** to fit the pretrained input — acceptable because the network keys on shape and texture, not color.
+
+### Why spatial size shrinks while depth grows
+
+In the block table above, two opposite trends run in parallel: spatial resolution shrinks (224 → 7) while channel depth grows (3 → 512). They have different causes but share one logic.
+
+**Space shrinks** because the more abstract a feature is, the fewer positions you need to localize it — like zooming a street map out to a country map: far fewer points, yet each point means much more. Pooling also enlarges each deeper neuron's *receptive field*, so a block-5 cell "sees" a large region of the brain — big enough to recognize a whole tumor.
+
+**Depth grows** because the number of useful patterns explodes with complexity: there are only a handful of basic edges, but a vast number of high-level structures ("rounded bright peripheral mass," "ring with a dark center," "symmetric normal ventricles"). More concepts to detect → more filters.
+
+Together, the network progressively **trades "where exactly" for "what exactly."** The final `512 × 7 × 7` tensor reads as: *"for each of 49 regions, which of 512 high-level concepts are present?"* — enough for the classifier head to decide the class, and the reason the Grad-CAM heatmaps in Phase 3 are coarse 7×7 maps (see [`clinical-context.md`](clinical-context.md) for the per-class hypotheses this enables).
+
 ---
 
 ## Transfer learning strategy

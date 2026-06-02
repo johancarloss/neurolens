@@ -53,6 +53,18 @@ Implementation: [`src/neurolens/training/cv.py`](../../../src/neurolens/training
 
 All hyperparameters are declared in YAML configs under [`configs/`](../../../configs/). They are loaded into a frozen Pydantic model (`TrainConfig`) that rejects unknown keys — a typo in YAML fails fast rather than silently using a default.
 
+### The mental model — descending a hill
+
+Training searches for the bottom of a valley: the point of **lowest error**. Most hyperparameters answer a question about *how to descend*:
+
+- **Loss** (cross-entropy) is the *height* — the error being minimized. It punishes *confident wrong* answers hardest: predicting 2% for the true class is far worse than predicting 30%.
+- **Learning rate** is the *step size*. Too large overshoots the valley and oscillates; too small crawls. This is exactly why the two stages differ — Stage 1's head is randomly initialized (far up the hill) so it takes larger steps (`1e-3`); Stage 2 fine-tunes the precious pretrained conv5 (already near the bottom) with 10× smaller steps (`1e-4`) so large updates don't destroy what ImageNet learned.
+- **Optimizer** (Adam) decides *how* to step — it carries momentum and adapts the step size per parameter.
+- **Batch size** is how many images are averaged before each step — 32 balances a stable gradient signal against T4 memory (~175 steps per epoch).
+- **Epochs** is how many full passes over the data (50). More is not always better: past a point the model memorizes the training set, which is why we keep the *best* checkpoint, not the last.
+- **Dropout** and **augmentation** push the model toward a *broad* valley that generalizes, rather than a narrow ditch that only fits the training images.
+- **Seed** fixes all randomness so a run is reproducible.
+
 ### Stage 1 (head only)
 
 | Hyperparameter | Value | Source |
@@ -84,12 +96,16 @@ Stage 2 starts from the best Stage-1 checkpoint of the same fold.
 
 The training loop lives in [`src/neurolens/training/trainer.py`](../../../src/neurolens/training/trainer.py).
 
-For each epoch:
+Two nested loops run: over **epochs** (50), and within each, over **batches** (~175). For each epoch:
 
-1. **Train pass**: iterate all training batches; for each batch, forward → loss → backward → optimizer step. Aggregate loss and accuracy.
-2. **Validation pass**: iterate all validation batches with `torch.no_grad()`. Aggregate metrics.
-3. **Checkpoint**: if `val_acc` improved, save the model's state dict to `checkpoints/<arch>_fold<k>_stage<s>/best.pt`. We keep **best only**, not every epoch — this saves disk and the best is what gets evaluated on the test set.
-4. **Log**: emit `train/loss`, `train/acc`, `val/loss`, `val/acc` to the dual-write tracker (see below).
+1. **Train pass** — for every batch of 32 images, the same five-step cycle runs:
+   `forward` (predict) → `loss` (measure error) → `backward` (compute the gradient) → `optimizer step` (nudge the weights downhill) → `zero_grad` (reset for the next batch).
+   The **gradient** computed by `backward` (backpropagation) is the slope of the error surface for each of the ~138M weights — *which direction reduces the loss* — propagated from the output back to the input (hence "backward"). The optimizer then takes one step of the size set by the learning rate. Weights **are updated** here.
+2. **Validation pass** — iterate the validation batches under `torch.no_grad()`. The model is in `eval` mode (dropout off, full network active), no gradient is computed, and **weights are not touched**. This pass only *measures* — computing gradients would waste memory and, worse, risk learning from data reserved for honest evaluation.
+3. **Checkpoint** — if `val_acc` improved, save the state dict to `checkpoints/<arch>_fold<k>_stage<s>/best.pt`. We keep **best only** — the best epoch (not necessarily the last) is what gets evaluated on the test set.
+4. **Log** — emit `train/loss`, `train/acc`, `val/loss`, `val/acc` to the dual-write tracker (see below).
+
+The contrast between the two passes is the heart of the loop: the **train pass adjusts** the model (gradients on, dropout on, weights updated); the **validation pass only measures** (gradients off, dropout off, weights frozen).
 
 Optionally, early stopping can be enabled (`early_stopping_patience` in config). For Phase 1, it is **disabled** to stay faithful to Wong's fixed 50-epoch schedule.
 

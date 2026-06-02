@@ -2,7 +2,7 @@
 
 > **Status:** Pipeline complete, single-fold sanity check **passed**.
 > Full 5-fold execution pending (estimated ~5h 25min on Kaggle T4).
-> **Last updated:** 2026-05-21
+> **Last updated:** 2026-06-02
 
 ---
 

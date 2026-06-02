@@ -98,7 +98,7 @@ $$
 
 Average of per-class F1 weighted by the **number of samples** in each class (`n_c` / total `N`). Common classes contribute more. For balanced datasets, weighted F1 ≈ macro F1; for imbalanced datasets, weighted F1 ≈ accuracy.
 
-In the Brain Tumor MRI dataset, the class balance is mild enough that macro F1 and weighted F1 are usually within ~0.005 of each other.
+In our **perfectly balanced** dataset (equal class sizes) the weights are all equal, so macro F1 and weighted F1 are effectively identical — in the Phase 1 single-fold run both were exactly 0.9421.
 
 ---
 
@@ -117,7 +117,30 @@ A 4 × 4 matrix where rows are **true labels** and columns are **predicted label
 
 The **diagonal** counts correct predictions. **Off-diagonal entries** count specific confusions — e.g., row `glioma`, column `meningioma` is the number of glioma scans the model called meningioma.
 
-The confusion matrix is more informative than any scalar metric: it tells you **which specific class pairs** the model confuses. Phase 3 (XAI) will use this to guide visual analysis of the hardest decision boundaries.
+### Worked example — where precision and recall come from
+
+The confusion matrix is the *source* of every other metric. With a small illustrative matrix (100 images per class, not real numbers):
+
+```
+                      Predicted
+                 glio  meni  noto  pitu  │ actual total
+   glioma      [  85    10    3     2  ] │   100
+   meningioma  [   8    88    2     2  ] │   100
+   notumor     [   4     3   91     2  ] │   100
+   pituitary   [   1     1    1    97  ] │   100
+```
+
+For the **glioma** class, the key is **row vs column**:
+
+- **Recall reads the row** — "of the 100 scans that *were* glioma, how many did I catch?"
+  `recall = 85 / 100 = 0.85`
+- **Precision reads the column** — "of all the times I *said* glioma, how many were right?"
+  `precision = 85 / (85+8+4+1) = 85 / 98 = 0.867`
+- **F1** combines them: `2 × (0.867 × 0.85) / (0.867 + 0.85) ≈ 0.86`
+
+The mnemonic: **row = recall, column = precision.** With it you can read any confusion matrix at a glance.
+
+The off-diagonal also tells the *story*: above, glioma and meningioma trade errors (10 + 8), while pituitary barely strays (97 on the diagonal). That matches the clinical expectation — glioma's variable morphology vs pituitary's fixed location (see [`clinical-context.md`](clinical-context.md)). The confusion matrix is more informative than any scalar: it reveals **which specific class pairs** the model confuses, which Phase 3 (XAI) then probes visually.
 
 ---
 
