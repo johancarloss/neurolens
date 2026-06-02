@@ -323,7 +323,98 @@ cross-section (not two separate tails, but one thickening viewed end-on).
 
 ## Pituitary tumor
 
-_To be documented._
+### What it is
+
+A pituitary tumor (almost always a **pituitary adenoma**) arises from the
+**pituitary gland** — the body's "master gland," which controls other glands
+through hormones. It sits in the **sella turcica**, a small bony hollow at the
+**center base of the brain**, just behind the nose and below the optic nerves.
+
+It is the **fourth most common** intracranial tumor (after glioma, meningioma,
+and schwannoma), most often appears in people in their **30s–40s**, and the
+large majority are **benign and slow-growing**.
+
+### The twist — this tumor "speaks" through hormones
+
+Unlike glioma (which causes symptoms by *compressing* brain tissue), a pituitary
+adenoma often causes symptoms through **chemistry**. It comes in two types:
+
+| Type | Behavior | How it presents |
+|------|----------|-----------------|
+| **Functioning** | Produces excess hormone | Hormonal symptoms *before* it grows large |
+| **Non-functioning** | Produces no hormone | Grows silently until it compresses something |
+
+About **58% of patients present with symptoms of hormone excess** — e.g.,
+Cushing's syndrome (high cortisol), acromegaly (high growth hormone), or high
+prolactin. A small tumor can therefore have a body-wide effect.
+
+### The classic compression symptom — vision
+
+Directly **above** the sella turcica runs the **optic chiasm** (where the eyes'
+nerves cross). When the tumor grows upward (**suprasellar extension**), it
+pushes on the chiasm and the patient loses **peripheral (side) vision** —
+*bitemporal hemianopsia*. This is a hallmark presentation of a pituitary
+macroadenoma.
+
+### How it appears on MRI — recognition checklist
+
+For pituitary, **location is the dominant signal** — you don't need to hunt for
+border or texture cues:
+
+| Sign | What to look for |
+|------|------------------|
+| **Fixed central-base location** | always in the sella turcica — midline, base of brain, behind the nose |
+| **Best seen sagittal + coronal** | the pituitary-dedicated MRI views; the mass sits dead-center |
+| **Enhances with contrast** | the pituitary region is *outside* the blood–brain barrier (it must exchange hormones with the blood), so contrast floods in → bright |
+| **Possible suprasellar extension** | a larger adenoma bulges upward toward the optic chiasm; a "snowman"/figure-8 shape on coronal views |
+
+**Why it lights up.** Same mechanism as the meningioma: the brightness is
+contrast (gadolinium) accumulating where there is no blood–brain barrier. For
+the pituitary, that absence is **functional** — the gland needs fenestrated
+("leaky") vessels to release and sense hormones in the bloodstream. Brightness
+depends on whether contrast was used: a non-contrast T1 of the same tumor looks
+gray, not white.
+
+### Example images (from the training set — all real)
+
+**1. Sagittal view.** Profile slice through the midline. The mass sits at the
+center base, in the sella turcica behind the nose — the fixed pituitary
+location. (Non-contrast here, so it reads gray rather than bright.)
+
+![Pituitary, sagittal](../assets/clinical/pituitary-sagittal.jpg)
+
+**2. Axial view.** Top-down. A bright, round, well-defined mass dead-center at
+the base of the brain — the contrast-enhanced appearance.
+
+![Pituitary, axial](../assets/clinical/pituitary-axial.jpg)
+
+**3. Coronal view.** Face-on. The mass sits in the midline at the skull base and
+bulges upward out of the sella — the suprasellar direction, toward the optic
+chiasm.
+
+![Pituitary, coronal](../assets/clinical/pituitary-coronal.jpg)
+
+Across all three planes the mass is in the **same place** — the sella turcica.
+That positional consistency is the whole story of this class.
+
+### Relevance to NeuroLens
+
+- **Fixed location → easiest class.** Its Phase 1 single-fold F1 (≈ 0.99) is the
+  highest of the four. The model essentially learns "mass at the center base =
+  pituitary" and rarely misses.
+- **Best positive control for the XAI** (Phase 3). The pituitary's Grad-CAM
+  should be tightly focused on the sella turcica. If the model attends there, it
+  is strong evidence it learned anatomy rather than a spurious shortcut — making
+  pituitary our cleanest check that the explanations are trustworthy.
+- **The pedagogical contrast with glioma.** Pituitary (fixed position, F1 0.99)
+  vs glioma (no fixed position, F1 0.90) illustrates exactly *why* positional
+  predictability makes a class easy to classify.
+
+### Sources
+
+- [Pituitary Adenomas — American Association of Neurological Surgeons (AANS)](https://www.aans.org/patients/conditions-treatments/pituitary-adenomas/)
+- [Pituitary Adenoma — StatPearls, NCBI Bookshelf](https://www.ncbi.nlm.nih.gov/books/NBK554451/)
+- [Imaging of pituitary tumors (5th WHO Classification) — NCBI](https://pmc.ncbi.nlm.nih.gov/articles/PMC10366012/)
 
 ## No tumor (negative class)
 
