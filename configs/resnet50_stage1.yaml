@@ -1,0 +1,40 @@
+# NeuroLens — ResNet50 stage 1 (head only)
+#
+# Same hyperparameters as VGG16 stage 1, so the two architectures are
+# compared under identical conditions. Stage 1: ImageNet-pretrained backbone
+# is FROZEN; only the custom head (model.fc) trains.
+
+arch: resnet50
+stage: 1
+
+# Optimization
+lr: 0.001           # matches VGG16 stage 1 for a fair comparison
+batch_size: 32
+epochs: 50
+optimizer: adam
+loss: cross_entropy
+
+# Augmentation (same as VGG16)
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+# Data
+image_size: 224
+num_workers: 4
+
+# Head
+dropout: 0.5
+
+# Reproducibility — SAME seed as VGG16 -> identical folds -> fair comparison
+seed: 42
+
+# Cross-validation (5-fold stratified)
+cv_folds: 5
+# null runs all 5 folds; an int (0..4) runs a single fold.
+target_fold: null
+
+# Early stopping disabled to keep the 50-epoch fixed schedule (as in VGG16)
+early_stopping_patience: null
+save_best_only: true

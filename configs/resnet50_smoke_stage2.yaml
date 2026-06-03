@@ -1,0 +1,32 @@
+# NeuroLens — ResNet50 SMOKE stage 2 (micro validation, <2 min)
+#
+# Stage-2 counterpart of resnet50_smoke_stage1. Validates the layer4 unfreeze
+# + new optimizer + test eval + checkpoint path on Kaggle. See CLAUDE.md §3.5.
+
+arch: resnet50
+stage: 2
+
+lr: 0.0001
+batch_size: 32
+epochs: 1
+optimizer: adam
+loss: cross_entropy
+
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+image_size: 224
+num_workers: 4
+dropout: 0.5
+seed: 42
+
+cv_folds: 5
+target_fold: 0
+
+train_samples_per_class: 50
+test_samples_per_class: 20
+
+early_stopping_patience: null
+save_best_only: true

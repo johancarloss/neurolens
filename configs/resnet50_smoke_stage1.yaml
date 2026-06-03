@@ -1,0 +1,34 @@
+# NeuroLens — ResNet50 SMOKE stage 1 (micro validation, <2 min)
+#
+# Validates the full ResNet50 path on Kaggle (build, dual-write with
+# arch=resnet50, checkpoint save) before burning GPU on the real 5-fold run.
+# Single fold, 1 epoch, heavily capped. See CLAUDE.md §3.5 (progressive smoke).
+
+arch: resnet50
+stage: 1
+
+lr: 0.001
+batch_size: 32
+epochs: 1
+optimizer: adam
+loss: cross_entropy
+
+augmentation:
+  shear_range: 0.2
+  zoom_range: 0.2
+  horizontal_flip: true
+
+image_size: 224
+num_workers: 4
+dropout: 0.5
+seed: 42
+
+cv_folds: 5
+target_fold: 0                  # single fold only
+
+# Caps keep the run under ~2 minutes
+train_samples_per_class: 50
+test_samples_per_class: 20
+
+early_stopping_patience: null
+save_best_only: true
