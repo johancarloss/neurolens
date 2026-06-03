@@ -37,6 +37,36 @@ def test_vgg16_stage2_yaml_loads() -> None:
     assert cfg.epochs == 50
 
 
+def test_resnet50_stage1_yaml_loads() -> None:
+    """The committed resnet50_stage1.yaml must load with matching VGG16 hyperparams."""
+    cfg = load_config(CONFIGS_DIR / "resnet50_stage1.yaml")
+    assert cfg.arch == "resnet50"
+    assert cfg.stage == 1
+    assert cfg.lr == 0.001
+    assert cfg.epochs == 50
+    assert cfg.seed == 42  # same seed as VGG16 -> identical folds (fair comparison)
+    assert cfg.cv_folds == 5
+    assert cfg.target_fold is None  # all 5 folds
+
+
+def test_resnet50_stage2_yaml_loads() -> None:
+    """Stage 2 YAML must drop lr 10x and set stage=2."""
+    cfg = load_config(CONFIGS_DIR / "resnet50_stage2.yaml")
+    assert cfg.arch == "resnet50"
+    assert cfg.stage == 2
+    assert cfg.lr == 0.0001
+
+
+def test_resnet50_smoke_yaml_loads_with_caps() -> None:
+    """Smoke configs must single-fold and cap samples for a <2 min micro run."""
+    cfg = load_config(CONFIGS_DIR / "resnet50_smoke_stage1.yaml")
+    assert cfg.arch == "resnet50"
+    assert cfg.epochs == 1
+    assert cfg.target_fold == 0
+    assert cfg.train_samples_per_class == 50
+    assert cfg.test_samples_per_class == 20
+
+
 def test_invalid_arch_rejected() -> None:
     """Pydantic Literal validator must reject unsupported archs."""
     with pytest.raises(ValidationError):
