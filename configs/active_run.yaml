@@ -23,4 +23,4 @@ job_type: train_vgg16
 #   - vgg16          : VGG16, 5 folds, 50 epochs each stage. PRODUCTION.
 #   - resnet50_smoke : ResNet50, 1 fold, 1 epoch, 50/20 samples/class. <2 min.
 #   - resnet50       : ResNet50, 5 folds, 50 epochs each stage. PRODUCTION.
-config_profile: resnet50_smoke
+config_profile: resnet50
