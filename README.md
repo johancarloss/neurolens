@@ -12,19 +12,24 @@ Course project for *Paradigmas de Aprendizagem de Máquina* (P6) at the
 
 ## Status
 
-✅ **Phase 1 — VGG16 Baseline complete.** 🔄 **Phase 2 (ResNet50) next.**
+✅ **Phase 1 (VGG16) & Phase 2 (ResNet50) complete.** 🔄 **Phase 3 (XAI) next.**
 
-Full 5-fold stratified cross-validation, evaluated on the held-out test set:
+Two architectures trained on identical 5-fold splits, evaluated on the held-out test set:
 
 ```
-test accuracy = 94.11% ± 0.56%   (5-fold mean)
-macro F1      = 94.01% ± 0.59%
-per-class F1: glioma 0.89 | meningioma 0.93 | notumor 0.95 | pituitary 0.99
+                 test accuracy        macro F1        time/fold
+VGG16            94.11% ± 0.56%       94.01% ± 0.59%  61.7 min
+ResNet50         94.64% ± 0.55%       94.53% ± 0.57%  50.2 min   (+0.52 pp, -19% time)
 ```
 
-See the **[Phase 1 write-up](docs/public/phases/phase-1-vgg16-baseline.md)**
-for the full results, confusion matrix, the honest comparison with
-Wong et al. (2025), and the parked future-improvement backlog.
+The architectures essentially tie (ResNet50 wins 4/5 folds, within the std band).
+The key finding: **both miss the same 82.2% of gliomas** — the difficulty is in the
+data, not the architecture.
+
+See the **[Phase 2 write-up](docs/public/phases/phase-2-architectures.md)** for the
+full comparison, side-by-side confusion matrices, and the clinical trade-off analysis;
+the **[Phase 1 write-up](docs/public/phases/phase-1-vgg16-baseline.md)** for the
+baseline and the Wong et al. (2025) comparison.
 
 ---
 
@@ -33,6 +38,7 @@ Wong et al. (2025), and the parked future-improvement backlog.
 Public documentation lives in [`docs/public/`](docs/public/) and grows as
 each phase completes:
 
+- **[Phase 2 — Multi-Architecture (VGG16 vs ResNet50)](docs/public/phases/phase-2-architectures.md)** — fair comparison, side-by-side confusion matrices, the architecture-independent glioma ceiling
 - **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — full 5-fold results, confusion matrix, Wong et al. comparison, parked improvements
 - **Methodology references** (cross-cutting):
   - [Dataset](docs/public/methodology/dataset.md) — Brain Tumor MRI, splits, preprocessing

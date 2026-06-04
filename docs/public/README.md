@@ -18,8 +18,8 @@ The project is delivered in 6 phases. Each phase produces a milestone write-up h
 |-------|-------|--------|----------|
 | 0 | Setup & Infrastructure | ✅ Complete | _coming next_ |
 | 1 | VGG16 Baseline (Wong et al. replication) | ✅ Complete — 94.11% ± 0.56% (5-fold) | [`phases/phase-1-vgg16-baseline.md`](phases/phase-1-vgg16-baseline.md) |
-| **2** | **Multi-architecture (ResNet50)** | 🔄 Next | — |
-| 3 | XAI analysis (Grad-CAM + LIME + SHAP) | ⏸ Not started | — |
+| 2 | Multi-architecture (ResNet50) | ✅ Complete — 94.64% ± 0.55% (5-fold) | [`phases/phase-2-architectures.md`](phases/phase-2-architectures.md) |
+| **3** | **XAI analysis (Grad-CAM + LIME + SHAP)** | 🔄 Next | — |
 | 4 | Gradio demo | ⏸ Not started | — |
 | 5 | Polish & delivery | ⏸ Not started | — |
 
@@ -41,6 +41,6 @@ Cross-cutting concepts are documented once in `methodology/` and referenced from
 
 ## How to read this documentation
 
-Start with the [Phase 1 write-up](phases/phase-1-vgg16-baseline.md) — it links to every methodology document at the relevant points. Reading them in the order they are referenced gives a natural top-down tour of the project.
+Start with the [Phase 1 write-up](phases/phase-1-vgg16-baseline.md) — it links to every methodology document at the relevant points — then read the [Phase 2 write-up](phases/phase-2-architectures.md) for the architecture comparison. Reading them in the order they are referenced gives a natural top-down tour of the project.
 
 For the top-level project overview, return to the root [`README.md`](../../README.md).
