@@ -33,7 +33,7 @@ Cross-cutting concepts are documented once in `methodology/` and referenced from
 |-------|---------------|
 | Dataset (Brain Tumor MRI, splits, preprocessing) | [`methodology/dataset.md`](methodology/dataset.md) |
 | Clinical context (what each tumor is, how it appears on MRI) | [`methodology/clinical-context.md`](methodology/clinical-context.md) |
-| Model (VGG16, transfer learning, 2-stage protocol) | [`methodology/model.md`](methodology/model.md) |
+| Model (VGG16 & ResNet50, transfer learning, residual connections, 2-stage protocol) | [`methodology/model.md`](methodology/model.md) |
 | Training (5-fold CV, hyperparameters, dual-write tracking) | [`methodology/training.md`](methodology/training.md) |
 | Evaluation metrics (accuracy, F1, confusion matrix) | [`methodology/metrics.md`](methodology/metrics.md) |
 

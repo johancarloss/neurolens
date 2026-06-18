@@ -53,6 +53,8 @@ The only differences are intrinsic to the architectures:
 
 ResNet50's head is smaller because its global average pooling already collapses each feature map to a single value (2048-d vector), so no flatten or bottleneck layer is needed.
 
+> For the **conceptual** explanation of these differences — residual (skip) connections, the degradation problem, global average pooling, and why the heads legitimately differ — see [`methodology/model.md`](../methodology/model.md#resnet50-architecture-overview). This document focuses on the *comparison*; `model.md` is the canonical reference for *how each architecture works*.
+
 ---
 
 ## Results — VGG16 vs ResNet50

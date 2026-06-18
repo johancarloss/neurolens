@@ -42,7 +42,7 @@ each phase completes:
 - **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — full 5-fold results, confusion matrix, Wong et al. comparison, parked improvements
 - **Methodology references** (cross-cutting):
   - [Dataset](docs/public/methodology/dataset.md) — Brain Tumor MRI, splits, preprocessing
-  - [Model](docs/public/methodology/model.md) — VGG16, transfer learning, 2-stage protocol
+  - [Model](docs/public/methodology/model.md) — VGG16 & ResNet50, transfer learning, residual connections, 2-stage protocol
   - [Training](docs/public/methodology/training.md) — 5-fold CV, hyperparameters, dual-write tracking
   - [Metrics](docs/public/methodology/metrics.md) — accuracy, F1, confusion matrix
 
