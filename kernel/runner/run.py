@@ -35,9 +35,8 @@ from kaggle_secrets import UserSecretsClient
 # Add new jobs in future phases by appending one line.
 # ============================================================================
 JOB_TYPES: dict[str, str] = {
-    "train_vgg16": "neurolens.training.run_vgg16",
-    # "train_resnet50": "neurolens.training.run_resnet50",  # Phase 2
-    # "xai_batch":      "neurolens.xai.run_batch",          # Phase 3
+    "train": "neurolens.training.run_train",  # arch-agnostic (vgg16 | resnet50, via config.arch)
+    "xai_batch": "neurolens.xai.run_batch",  # Grad-CAM + LIME + SHAP batch
 }
 
 
@@ -105,7 +104,7 @@ if not ACTIVE_RUN_PATH.exists():
 with ACTIVE_RUN_PATH.open() as f:
     active_run = yaml.safe_load(f) or {}
 
-job_type = active_run.get("job_type", "train_vgg16")
+job_type = active_run.get("job_type", "train")
 config_profile = active_run.get("config_profile", "vgg16")
 
 print(f"[runner] active_run.yaml -> job_type={job_type!r} config_profile={config_profile!r}")

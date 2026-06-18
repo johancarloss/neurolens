@@ -10,17 +10,15 @@
 #   3. In Kaggle UI: Save Version -> Save & Run All
 # That's it. No CLI push, no UI variable juggling.
 
-# Which entry point to invoke (see JOB_TYPES registry in kernel/runner/run.py).
-# Since Phase 2 the runner is arch-agnostic (it reads `arch` from the config
-# profile), so this stays `train_vgg16` for ANY architecture — it is now just
-# the label the immutable kernel maps to the generalized runner.
-job_type: train_vgg16
+# Which entry point to invoke (see JOB_TYPES registry in kernel/runner/run.py):
+#   - train     : arch-agnostic training (VGG16 | ResNet50, chosen by config.arch)
+#   - xai_batch : Grad-CAM + LIME + SHAP batch over selected images
+job_type: xai_batch
 
-# Which config pair to load (resolves to configs/{profile}_stage{1,2}.yaml)
-# Available profiles:
-#   - smoke_micro    : VGG16, 1 fold, 1 epoch, 50/20 samples/class. <2 min.
-#   - smoke_small    : VGG16, 1 fold, 2 epochs, full dataset.
-#   - vgg16          : VGG16, 5 folds, 50 epochs each stage. PRODUCTION.
-#   - resnet50_smoke : ResNet50, 1 fold, 1 epoch, 50/20 samples/class. <2 min.
-#   - resnet50       : ResNet50, 5 folds, 50 epochs each stage. PRODUCTION.
-config_profile: resnet50
+# Which config profile to load:
+#   train jobs    -> configs/{profile}_stage{1,2}.yaml
+#     smoke_micro / smoke_small / vgg16 / resnet50_smoke / resnet50
+#   xai_batch     -> configs/{profile}.yaml
+#     xai_smoke   : 1 arch, 2 images, tiny budgets. <2 min. USE FIRST.
+#     xai_default : both archs, 40 images, full LIME/SHAP budgets. PRODUCTION.
+config_profile: xai_smoke
