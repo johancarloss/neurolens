@@ -1,0 +1,14 @@
+# Extra deps the Kaggle base image lacks (torch / torchvision / scikit-learn /
+# scikit-image / numpy / Pillow / matplotlib / pandas / tqdm are already there).
+# Installed by kernel/runner/run.py at bootstrap, from the cloned repo.
+#
+# To add a Kaggle dependency: add a line here + `git push`. NO kernel re-push
+# needed — the runner clones the repo fresh and reads this file every run.
+psycopg2-binary>=2.9
+wandb>=0.18
+tenacity>=8.0
+pydantic>=2.0
+pyyaml>=6.0
+grad-cam>=1.5
+lime>=0.2.0.1
+shap>=0.51

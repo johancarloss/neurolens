@@ -71,19 +71,12 @@ subprocess.run(
 )
 
 # ============================================================================
-# 3. Install extras (Kaggle image already has torch, sklearn, etc.)
+# 3. Install extras (Kaggle image already has torch, sklearn, PIL, etc.)
+# Read from the cloned repo's requirements-kaggle.txt so adding a dep is a
+# git push (no kernel re-push). This file is the ONLY install source.
 # ============================================================================
 subprocess.run(
-    [
-        "pip",
-        "install",
-        "-q",
-        "psycopg2-binary>=2.9",
-        "wandb>=0.18",
-        "tenacity>=8.0",
-        "pydantic>=2.0",
-        "pyyaml>=6.0",
-    ],
+    ["pip", "install", "-q", "-r", str(REPO_DIR / "requirements-kaggle.txt")],
     check=True,
 )
 
