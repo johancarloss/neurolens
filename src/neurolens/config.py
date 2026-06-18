@@ -103,3 +103,53 @@ def load_config(path: str | Path) -> TrainConfig:
     with path.open() as f:
         data = yaml.safe_load(f) or {}
     return TrainConfig(**data)
+
+
+class XaiArchSpec(BaseModel):
+    """One architecture to explain, with its checkpoint and prediction run.
+
+    ``run_id`` is the prediction run of the explained fold; it links every XAI
+    artifact/comparison back to the right prediction (which encodes the arch).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: Literal["vgg16", "resnet50"]
+    checkpoint: str
+    run_id: int = Field(gt=0)
+
+
+class XaiConfig(BaseModel):
+    """Configuration for an XAI batch run (Grad-CAM + LIME + SHAP)."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    archs: list[XaiArchSpec] = Field(min_length=1)
+    # Prediction runs to draw the image selection from — should match the
+    # explained folds, so the selection reason matches the model we explain.
+    selection_run_ids: list[int] = Field(min_length=1)
+    num_images: int = Field(gt=0)
+
+    # LIME
+    lime_num_samples: int = Field(default=1000, gt=0)
+    lime_segments_n: int = Field(default=100, gt=0)
+    lime_stability_runs: int = Field(default=5, ge=1)
+
+    # SHAP
+    shap_nsamples: int = Field(default=200, gt=0)
+    shap_num_background: int = Field(default=50, gt=0)
+
+    # Metrics
+    binarization_threshold: float = Field(default=0.5, gt=0.0, lt=1.0)
+
+    output_dir: str
+
+
+def load_xai_config(path: str | Path) -> XaiConfig:
+    """Load and validate an XAI batch YAML config."""
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
+    return XaiConfig(**data)

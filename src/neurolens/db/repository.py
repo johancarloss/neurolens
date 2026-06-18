@@ -308,3 +308,89 @@ def insert_predictions_bulk(
             page_size=page_size,
         )
     return len(rows)
+
+
+def get_prediction_id(run_id: int, image_filename: str) -> int | None:
+    """Return the prediction id for one image under one run, or None if absent.
+
+    Used by the XAI batch to link artifacts/comparisons to the prediction of the
+    exact (arch, fold) being explained.
+    """
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id FROM neurolens.predictions
+            WHERE run_id = %s AND image_filename = %s
+            LIMIT 1
+            """,
+            (run_id, image_filename),
+        )
+        row = cur.fetchone()
+        return int(row[0]) if row is not None else None
+
+
+def insert_xai_artifact(
+    prediction_id: int,
+    method: str,
+    target_class: str,
+    artifact_path: str,
+    compute_time_ms: float,
+    metadata: dict[str, Any] | None = None,
+) -> int:
+    """Insert one XAI artifact row (one technique applied to one prediction)."""
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO neurolens.xai_artifacts (
+                prediction_id, method, target_class, artifact_path,
+                compute_time_ms, metadata
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                prediction_id,
+                method,
+                target_class,
+                artifact_path,
+                compute_time_ms,
+                Json(metadata or {}),
+            ),
+        )
+        row = cur.fetchone()
+        assert row is not None, "INSERT ... RETURNING returned no row"
+        return int(row[0])
+
+
+def insert_xai_comparison(prediction_id: int, metrics: dict[str, Any]) -> int:
+    """Insert one XAI comparison row (the 5-metric summary for one prediction).
+
+    ``metrics`` is the dict returned by ``xai.metrics.compute_all_metrics``;
+    missing keys are stored as NULL.
+    """
+    columns = (
+        "iou_gradcam_lime",
+        "iou_gradcam_shap",
+        "iou_lime_shap",
+        "lime_stability_std",
+        "lime_num_runs",
+        "sparsity_gradcam",
+        "sparsity_lime",
+        "sparsity_shap",
+        "time_ms_gradcam",
+        "time_ms_lime",
+        "time_ms_shap",
+        "binarization_threshold",
+    )
+    with get_connection() as conn, conn.cursor() as cur:
+        cur.execute(
+            f"""
+            INSERT INTO neurolens.xai_comparisons (prediction_id, {", ".join(columns)})
+            VALUES ({", ".join(["%s"] * (len(columns) + 1))})
+            RETURNING id
+            """,
+            (prediction_id, *(metrics.get(col) for col in columns)),
+        )
+        row = cur.fetchone()
+        assert row is not None, "INSERT ... RETURNING returned no row"
+        return int(row[0])

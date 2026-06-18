@@ -5,16 +5,19 @@
 # finding (glioma, especially glioma->notumor). Checkpoint paths point to the
 # Kaggle Dataset of trained .pt files (see Phase 3 plan, Bloco 0).
 
-# Explain with each architecture (one representative fold per arch)
+# Explain with each architecture (fold 0 of each). run_id is that fold's
+# prediction run — it links each XAI artifact to the matching prediction.
 archs:
   - name: vgg16
     checkpoint: /kaggle/input/neurolens-checkpoints/vgg16_fold0_final.pt
+    run_id: 14
   - name: resnet50
     checkpoint: /kaggle/input/neurolens-checkpoints/resnet50_fold0_final.pt
+    run_id: 26
 
-# Which prediction runs to draw the image selection from (all production stage-2
-# runs: vgg16 14/16/18/20/22 + resnet50 26/28/30/32/34)
-selection_run_ids: [14, 16, 18, 20, 22, 26, 28, 30, 32, 34]
+# Draw the image selection from the SAME folds we explain (fold 0 of each arch),
+# so the selection reason matches the checkpoint we run XAI with.
+selection_run_ids: [14, 26]
 num_images: 40
 
 # LIME (slow — scales with num_samples; stability runs multiply cost)

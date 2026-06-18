@@ -7,7 +7,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from neurolens.config import AugmentationConfig, TrainConfig, load_config
+from neurolens.config import (
+    AugmentationConfig,
+    TrainConfig,
+    XaiConfig,
+    load_config,
+    load_xai_config,
+)
 
 CONFIGS_DIR = Path(__file__).parent.parent / "configs"
 
@@ -109,3 +115,38 @@ def test_augmentation_defaults() -> None:
     assert aug.shear_range == 0.2
     assert aug.zoom_range == 0.2
     assert aug.horizontal_flip is True
+
+
+def test_xai_default_yaml_loads() -> None:
+    """The committed xai_default.yaml validates and explains both architectures."""
+    cfg = load_xai_config(CONFIGS_DIR / "xai_default.yaml")
+    assert [a.name for a in cfg.archs] == ["vgg16", "resnet50"]
+    # selection draws from the explained folds (so reason matches checkpoint)
+    arch_run_ids = {a.run_id for a in cfg.archs}
+    assert arch_run_ids.issubset(set(cfg.selection_run_ids))
+    assert cfg.num_images > 0
+
+
+def test_xai_smoke_yaml_loads() -> None:
+    """The smoke profile validates and is a tiny single-arch run."""
+    cfg = load_xai_config(CONFIGS_DIR / "xai_smoke.yaml")
+    assert len(cfg.archs) == 1
+    assert cfg.num_images <= 5
+    assert cfg.lime_stability_runs == 1
+
+
+def test_xai_invalid_arch_rejected() -> None:
+    """XaiArchSpec arch name is a Literal — unknown archs fail."""
+    with pytest.raises(ValidationError):
+        XaiConfig(
+            archs=[{"name": "alexnet", "checkpoint": "x.pt", "run_id": 1}],  # type: ignore[list-item]
+            selection_run_ids=[1],
+            num_images=10,
+            output_dir="/tmp/xai",
+        )
+
+
+def test_xai_requires_at_least_one_arch() -> None:
+    """An empty archs list is rejected (nothing to explain)."""
+    with pytest.raises(ValidationError):
+        XaiConfig(archs=[], selection_run_ids=[1], num_images=10, output_dir="/tmp/xai")

@@ -7,8 +7,9 @@
 archs:
   - name: resnet50
     checkpoint: /kaggle/input/neurolens-checkpoints/resnet50_fold0_final.pt
+    run_id: 26
 
-selection_run_ids: [26, 28, 30, 32, 34]
+selection_run_ids: [26]
 num_images: 2
 
 lime_num_samples: 50
