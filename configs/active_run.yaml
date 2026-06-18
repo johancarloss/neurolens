@@ -21,4 +21,4 @@ job_type: xai_batch
 #   xai_batch     -> configs/{profile}.yaml
 #     xai_smoke   : 1 arch, 2 images, tiny budgets. <2 min. USE FIRST.
 #     xai_default : both archs, 40 images, full LIME/SHAP budgets. PRODUCTION.
-config_profile: xai_smoke
+config_profile: xai_default
