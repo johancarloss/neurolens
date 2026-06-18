@@ -42,10 +42,32 @@ from neurolens.xai.selection import select_images
 from neurolens.xai.shap_explainer import ShapExplainer
 
 
+def _resolve_checkpoint(checkpoint: str) -> str:
+    """Return the checkpoint path, falling back to a search under /kaggle/input.
+
+    Kaggle mounts datasets at unpredictable paths (the brain-tumor set lands at
+    ``/kaggle/input/datasets/<owner>/<slug>``, not the documented
+    ``/kaggle/input/<slug>``), so a hardcoded path is fragile. If the configured
+    path is absent, search by filename — the same robustness kaggle_paths uses.
+    """
+    if Path(checkpoint).exists():
+        return checkpoint
+    name = Path(checkpoint).name
+    kaggle_input = Path("/kaggle/input")
+    matches = sorted(kaggle_input.rglob(name)) if kaggle_input.exists() else []
+    if matches:
+        print(f"[run_batch] resolved checkpoint '{name}' -> {matches[0]}")
+        return str(matches[0])
+    raise FileNotFoundError(
+        f"Checkpoint '{name}' not found at '{checkpoint}' nor under /kaggle/input. "
+        f"Is the neurolens-checkpoints dataset attached to the kernel?"
+    )
+
+
 def _load_model(arch: str, checkpoint: str, device: torch.device) -> nn.Module:
     """Build the architecture (stage 2 layout) and load its fine-tuned weights."""
     model = build_model(arch, num_classes=4, stage=2)
-    state = torch.load(checkpoint, map_location=device, weights_only=True)
+    state = torch.load(_resolve_checkpoint(checkpoint), map_location=device, weights_only=True)
     model.load_state_dict(state)
     return model.eval().to(device)
 
