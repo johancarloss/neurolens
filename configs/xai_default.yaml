@@ -1,0 +1,33 @@
+# NeuroLens — XAI batch generation (production)
+#
+# Runs Grad-CAM + LIME + SHAP on the SAME selected images for BOTH architectures,
+# so we can compare where each model looks. Image selection targets the Phase 2
+# finding (glioma, especially glioma->notumor). Checkpoint paths point to the
+# Kaggle Dataset of trained .pt files (see Phase 3 plan, Bloco 0).
+
+# Explain with each architecture (one representative fold per arch)
+archs:
+  - name: vgg16
+    checkpoint: /kaggle/input/neurolens-checkpoints/vgg16_fold0_final.pt
+  - name: resnet50
+    checkpoint: /kaggle/input/neurolens-checkpoints/resnet50_fold0_final.pt
+
+# Which prediction runs to draw the image selection from (all production stage-2
+# runs: vgg16 14/16/18/20/22 + resnet50 26/28/30/32/34)
+selection_run_ids: [14, 16, 18, 20, 22, 26, 28, 30, 32, 34]
+num_images: 40
+
+# LIME (slow — scales with num_samples; stability runs multiply cost)
+lime_num_samples: 1000
+lime_segments_n: 100
+lime_stability_runs: 5
+
+# SHAP (GradientExplainer)
+shap_nsamples: 200
+shap_num_background: 50
+
+# Metrics
+binarization_threshold: 0.5
+
+# Output
+output_dir: /kaggle/working/xai

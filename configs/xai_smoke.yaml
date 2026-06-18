@@ -1,0 +1,23 @@
+# NeuroLens — XAI SMOKE (micro validation, <2 min)
+#
+# Validates the full XAI path on Kaggle (load .pt, run the 3 techniques on a
+# couple of images, persist) before the real batch. One architecture, 2 images,
+# tiny LIME/SHAP budgets. See CLAUDE.md §3.5 (progressive smoke).
+
+archs:
+  - name: resnet50
+    checkpoint: /kaggle/input/neurolens-checkpoints/resnet50_fold0_final.pt
+
+selection_run_ids: [26, 28, 30, 32, 34]
+num_images: 2
+
+lime_num_samples: 50
+lime_segments_n: 30
+lime_stability_runs: 1
+
+shap_nsamples: 10
+shap_num_background: 4
+
+binarization_threshold: 0.5
+
+output_dir: /kaggle/working/xai
