@@ -7,7 +7,7 @@
   "is_private": "true",
   "enable_gpu": "true",
   "enable_internet": "true",
-  "dataset_sources": ["masoudnickparvar/brain-tumor-mri-dataset"],
+  "dataset_sources": ["masoudnickparvar/brain-tumor-mri-dataset", "johancarloss/neurolens-checkpoints"],
   "competition_sources": [],
   "kernel_sources": [],
   "model_sources": []
