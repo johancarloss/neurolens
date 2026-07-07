@@ -12,24 +12,28 @@ Course project for *Paradigmas de Aprendizagem de Máquina* (P6) at the
 
 ## Status
 
-✅ **Phase 1 (VGG16) & Phase 2 (ResNet50) complete.** 🔄 **Phase 3 (XAI) next.**
+✅ **Phases 1, 2, and 3 complete.** 🔄 **Phase 4 (Gradio demo) next.**
 
-Two architectures trained on identical 5-fold splits, evaluated on the held-out test set:
+Two architectures (VGG16 + ResNet50) trained on identical splits, then explained with three complementary XAI techniques (Grad-CAM + LIME + SHAP) over a targeted sample of glioma cases.
 
 ```
-                 test accuracy        macro F1        time/fold
-VGG16            94.11% ± 0.56%       94.01% ± 0.59%  61.7 min
-ResNet50         94.64% ± 0.55%       94.53% ± 0.57%  50.2 min   (+0.52 pp, -19% time)
+                 test accuracy        macro F1
+VGG16            94.11% ± 0.56%       94.01% ± 0.59%
+ResNet50         94.64% ± 0.55%       94.53% ± 0.57%   (technical tie)
 ```
 
-The architectures essentially tie (ResNet50 wins 4/5 folds, within the std band).
-The key finding: **both miss the same 82.2% of gliomas** — the difficulty is in the
-data, not the architecture.
+The architectures tie on accuracy but agree on their *mistakes*: both miss the same
+82.2% of gliomas (Phase 2). Phase 3's XAI analysis revealed *why*:
+- On misclassified gliomas, both models **look at the ventricles** and ignore
+  peripheral tumors visible in the MRI — structural inferential bias, not epistemic
+  uncertainty.
+- **SHAP saw the tumor signal both models discarded** — the information is there;
+  the model just weights it too low.
+- Even on correct predictions, LIME flags **non-cerebral tissue** as decisive —
+  evidence of shortcut learning (~94% accuracy may be dataset-inflated).
 
-See the **[Phase 2 write-up](docs/public/phases/phase-2-architectures.md)** for the
-full comparison, side-by-side confusion matrices, and the clinical trade-off analysis;
-the **[Phase 1 write-up](docs/public/phases/phase-1-vgg16-baseline.md)** for the
-baseline and the Wong et al. (2025) comparison.
+See the **[Phase 3 write-up](docs/public/phases/phase-3-xai.md)** for the twelve
+findings and the two thesis figures with side-by-side XAI comparisons.
 
 ---
 
@@ -38,6 +42,7 @@ baseline and the Wong et al. (2025) comparison.
 Public documentation lives in [`docs/public/`](docs/public/) and grows as
 each phase completes:
 
+- **[Phase 3 — Comparative XAI (Grad-CAM + LIME + SHAP)](docs/public/phases/phase-3-xai.md)** — twelve findings, thesis figures with side-by-side comparisons, the structural bias diagnosis
 - **[Phase 2 — Multi-Architecture (VGG16 vs ResNet50)](docs/public/phases/phase-2-architectures.md)** — fair comparison, side-by-side confusion matrices, the architecture-independent glioma ceiling
 - **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — full 5-fold results, confusion matrix, Wong et al. comparison, parked improvements
 - **Methodology references** (cross-cutting):
