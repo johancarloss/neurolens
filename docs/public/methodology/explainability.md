@@ -1,10 +1,10 @@
-# Explainability — How Grad-CAM turns a decision into a heatmap
+# Explainability — how Grad-CAM, LIME and SHAP explain a decision
 
 > Reference document — explains the **mechanism** of the explainability (XAI)
 > techniques used in [Phase 3](../phases/phase-3-xai.md). It assumes the CNN
 > internals described in [`model.md`](model.md) (convolution, feature maps,
-> backbone/head). **Grad-CAM** is documented here first; **LIME** and **SHAP**
-> join as sibling sections as each is written up.
+> backbone/head). **Grad-CAM** and **LIME** are documented below; **SHAP** joins
+> as a sibling section once written up.
 
 ---
 
@@ -16,14 +16,22 @@ that looked at the tumor and a model that looked at an unrelated structure can
 both output the same label. For a medical baseline that is not good enough; we
 need to see **where** the model looked and decide whether to trust it.
 
-**Grad-CAM** (Gradient-weighted Class Activation Mapping) answers exactly that:
-it produces a heatmap over the input MRI showing which regions most drove the
-predicted class. This document explains how it does so, step by step, and ties
-each step to the code that implements it.
+The three techniques answer that same question — *where did the evidence come
+from?* — from independent angles. **Grad-CAM** reads the network from the inside
+(gradients); **LIME** probes it from the outside (hiding regions); **SHAP**
+attributes a fair contribution to each pixel. Their agreement (or disagreement)
+in Phase 3 is what makes the analysis trustworthy: no single map is taken on
+faith.
 
 ---
 
-## The premise: feature maps are what Grad-CAM reads
+## Grad-CAM — from a decision to a heatmap
+
+Grad-CAM (Gradient-weighted Class Activation Mapping) produces a heatmap over the
+input MRI showing which regions most drove the predicted class. It is a
+**white-box** method: it needs access to the network's internals.
+
+### The premise: feature maps are what Grad-CAM reads
 
 Grad-CAM does not look at the raw image. It reads the **last convolutional
 layer** of the backbone. From [`model.md`](model.md#how-convolution-and-pooling-actually-work),
@@ -55,9 +63,7 @@ decide, which throws away location — see
 conv layer is therefore the last point that retains a spatial grid, and Grad-CAM
 exploits it.
 
----
-
-## How Grad-CAM works — the six-step recipe
+### The six-step recipe
 
 ```
 1. FORWARD    run the image through the backbone; keep the last layer's
@@ -85,7 +91,7 @@ importance weight `αₖ`. It behaves like the learned weights from
 [`model.md`](model.md#how-convolution-and-pooling-actually-work), but computed
 **per image** — which is why two different scans produce different heatmaps.
 
-### A worked example with three maps
+#### A worked example with three maps
 
 Suppose the backbone produced just three feature maps `A`, `B`, `C`, and the
 backward pass returned these importance weights:
@@ -112,7 +118,7 @@ image that drove the decision. Evidence *against* the class (`C`) never lights u
 — a direct consequence of the ReLU in step 4, and the reason Grad-CAM only ever
 shows support *for* the explained class.
 
-### Why the heatmap looks coarse
+#### Why the heatmap looks coarse
 
 Step 5 stretches a **7×7** map to **224×224** — a 32× upscale — so Grad-CAM
 output is a smooth blob, not a pixel-sharp outline. This is a fundamental
@@ -121,9 +127,7 @@ see [`model.md`](model.md#why-spatial-size-shrinks-while-depth-grows)), and one
 reason Phase 3 cross-checks Grad-CAM against LIME and SHAP rather than trusting
 any single map.
 
----
-
-## In code
+### In code
 
 The wrapper lives in
 [`src/neurolens/xai/gradcam.py`](../../../src/neurolens/xai/gradcam.py). It
@@ -147,37 +151,22 @@ class GradCAMExplainer:
         return grayscale_cam, elapsed_ms
 ```
 
-Two design points make this architecture-agnostic:
+The target layer is resolved by
+[`get_target_layer_for_gradcam(model, arch)`](../../../src/neurolens/models/factory.py)
+(`features[-1]` for VGG16, `layer4[-1]` for ResNet50), and
+`ClassifierOutputTarget(target_class)` is what makes the backward pass start from
+the chosen class's score. The demo composes this with the overlay (step 6) in
+[`src/neurolens/ui/inference.py`](../../../src/neurolens/ui/inference.py).
 
-- **The target layer is resolved by the factory.**
-  [`get_target_layer_for_gradcam(model, arch)`](../../../src/neurolens/models/factory.py)
-  returns `features[-1]` for VGG16 and `layer4[-1]` for ResNet50 — the "last conv
-  layer" from the table above, per architecture, with no branching in the
-  explainer.
-- **The target class is explicit.** `ClassifierOutputTarget(target_class)` is
-  what makes the backward pass (step 2) start from the chosen class's score. The
-  demo passes the model's own top prediction, so the heatmap explains *the
-  decision the model actually made*.
+### What Grad-CAM revealed in this project
 
-The demo composes this with the overlay (step 6) in
-[`src/neurolens/ui/inference.py`](../../../src/neurolens/ui/inference.py): it runs
-`explain(...)` for both architectures and blends each map over the shared
-original MRI with `overlay_saliency`, so the two models' attention can be
-compared side by side.
-
----
-
-## What Grad-CAM revealed in this project
-
-Grad-CAM is not a decoration — in Phase 3 it surfaced a real failure mode
-(Finding 8). On a glioma that **both** models misread as *notumor*, the heatmaps
+On a glioma that **both** models misread as *notumor* (Finding 8), the heatmaps
 did not spread out from uncertainty; they concentrated **confidently on the
 ventricles** (center) while ignoring the tumor in the frontal lobe. Reading the
-recipe backward explains exactly what happened: the forward pass activated a
-"suspicious texture" map over the ventricles, the backward pass gave that map a
-high weight for the *notumor* score, and combine → ReLU → upsample painted the
-ventricles hot. The model had learned *"ventricular distortion ⇒ tumor"* and
-looks there by default.
+recipe backward explains it: the forward pass activated a "suspicious texture"
+map over the ventricles, the backward pass gave that map a high weight for the
+*notumor* score, and combine → ReLU → upsample painted the ventricles hot. The
+model had learned *"ventricular distortion ⇒ tumor"* and looks there by default.
 
 ![Grad-CAM, LIME and SHAP overlays for both architectures on a glioma misread as notumor, each shown beside the original MRI. Grad-CAM concentrates on the ventricles, not the frontal-lobe tumor.](../assets/phase-3-case-error.png)
 
@@ -186,30 +175,168 @@ beside each overlay, "a large red blob" resolves into "the model looked in the
 wrong place" — which is only legible because the last conv layer preserved
 **where**.*
 
----
-
-## Limitations
+### Limitations
 
 - **Coarse resolution.** The 7×7 → 224×224 upscale makes Grad-CAM a
   region-level, not pixel-level, explanation.
 - **Positive evidence only.** The ReLU in step 4 discards evidence *against* the
   class, so a Grad-CAM map shows only what supported the chosen label.
 - **Attention is not correctness.** A confident, well-placed heatmap shows
-  *where* the model looked, not *whether the reasoning generalizes*. Phase 3's
-  Finding 10 (shortcut learning on the skull, surfaced by LIME) is the
-  cautionary counterpart — which is why the project reports **three** techniques,
-  not one.
+  *where* the model looked, not *whether the reasoning generalizes* — which is
+  exactly what LIME exposes next.
+
+---
+
+## LIME — probing the model from the outside
+
+LIME (Local Interpretable Model-agnostic Explanations) answers the same question
+as Grad-CAM, but is its **philosophical opposite**. It is a **black-box** method:
+it never opens the network. It only feeds the model inputs and watches the
+outputs — which means it works on *any* classifier, not just CNNs.
+
+### The premise: hide a region, watch the decision
+
+The core idea is a question anyone can pose to a sealed model:
+
+> *If I **hide** part of the image and show it again — does the prediction
+> change?*
+
+If hiding a region makes *"glioma: 90%"* collapse to *"glioma: 20%"*, that region
+**mattered**. If hiding it changes nothing, that region was **irrelevant**. This
+is the "remove an ingredient and taste" strategy: you discover what a dish needs
+without ever reading the recipe.
+
+Crucially, **LIME is not a neural network.** It is a *procedure* that stands
+outside the CNN. To summarize what it finds, it builds a tiny, simple helper
+model (a linear regression, below) — but that helper has nothing to do with, and
+never replaces, the CNN it is explaining.
+
+### How LIME works — four steps
+
+```
+1. SUPERPIXELS   segment the image into ~100 coherent chunks (SLIC), not pixels
+                 (50k pixels is intractable, and one pixel changes nothing)
+
+2. PERTURB       generate N variants (200 in the demo, up to 1000 in research),
+                 each hiding a random subset of superpixels; run the model on
+                 each → a table  [which superpixels off]  →  [class probability]
+
+3. SURROGATE     fit a simple LINEAR regression to that table → one weight per
+                 superpixel (how much turning it on pushes the class up)
+
+4. MASK          paint the top-5 positive-weight superpixels back onto the image
+```
+
+The heart is step 3, and it is what the name encodes:
+
+- **Interpretable** — the surrogate is a *linear* model: one readable weight per
+  superpixel. Nobody can read a 138M-weight CNN; anyone can read a linear
+  regression. Explaining a black box with another black box would explain
+  nothing, so the surrogate is deliberately simple.
+- **Local** — the surrogate does not approximate the CNN everywhere, only in the
+  **neighborhood of this one image** (all N variants are perturbations of *this*
+  MRI). It is a straight line fit to a curve: only valid locally, but simple
+  enough to read.
+- **Model-agnostic** — using only the input→output table, it works on any model.
+
+Concretely, the perturbation table (step 2) makes the decisive superpixel obvious
+even before the regression:
+
+```
+variant   hidden superpixels        →  "glioma"?
+──────────────────────────────────────────────────
+  #1       {5, 12, 30}  (edges, bg)  →  88%   (barely moved)
+  #2       {42}         (tumor block)→  25%   (collapsed!)
+  #3       {7, 42, 61}  (incl. tumor)→  22%   (collapsed again)
+  #4       {3, 88}      (dark bg)    →  90%   (unchanged)
+  …
+```
+
+Superpixel `#42` crashes the score whenever it is hidden → the linear surrogate
+assigns it a large positive weight; the background superpixels get ≈ 0.
+
+### In code
+
+[`src/neurolens/xai/lime_explainer.py`](../../../src/neurolens/xai/lime_explainer.py)
+wraps the [`lime`](https://github.com/marcotcr/lime) library:
+
+```python
+self.segmenter = SegmentationAlgorithm("slic", n_segments=100, compactness=10, sigma=1)
+
+explanation = self.explainer.explain_instance(
+    rgb_image_uint8, classifier_fn=self._batch_predict,
+    hide_color=0,                    # hidden superpixels are blacked out
+    num_samples=self.num_samples,    # 200 (demo) / 1000 (research)
+    segmentation_fn=self.segmenter,
+)
+_, mask = explanation.get_image_and_mask(
+    target_class, positive_only=True,  # only superpixels that vote FOR the class
+    num_features=5, hide_rest=False,   # the 5 most decisive
+)
+```
+
+Two project-specific notes: MRI is grayscale, so the single channel is stacked to
+three (LIME/SLIC expect RGB); and `_batch_predict` normalizes each perturbed
+batch with the same ImageNet mean/std used in training before querying the model.
+
+The `positive_only=True` flag plays the same role as Grad-CAM's ReLU — it keeps
+only evidence *for* the explained class. Two independent methods converging on
+that design choice is a sign it is fundamental, not incidental.
+
+### What LIME revealed in this project
+
+LIME caught something Grad-CAM could not (Finding 10). On a glioma the model
+classified **correctly** and confidently, LIME's mask flagged the **skull**
+(dorsal calvarium — non-cerebral tissue) as decisive, not the tumor. The model
+reached the right answer for the *wrong reason*: it leaned on a **shortcut** — a
+feature that correlates with the class in this dataset but is not the disease.
+The ~94% accuracy may therefore be partly inflated by dataset-specific cues that
+would not transfer to a different scanner. Only the "hide and observe" strategy,
+which reads the decisive regions directly, could surface this.
+
+![Grad-CAM, LIME and SHAP overlays for both architectures on a correctly-classified glioma, beside the original MRI. LIME highlights the skull rim as decisive.](../assets/phase-3-case-correct.png)
+
+*The correct case from [Phase 3](../phases/phase-3-xai.md): a right answer whose
+LIME map points at non-cerebral tissue — the visual signature of shortcut
+learning.*
+
+### Limitations
+
+- **Stochastic.** Perturbations are random, so repeated runs give slightly
+  different masks; Phase 3 measures this as a stability metric.
+- **Slow.** Every explanation costs `num_samples` forward passes — the reason
+  LIME dominates the demo's timing readout.
+- **Bounded by the segmentation.** The explanation is only as good as the
+  superpixels; a bad segmentation hides or blurs real structure.
+- **Correlation, not causation.** A decisive region is decisive *for this model
+  on this dataset* — as Finding 10 shows, that can mean a shortcut rather than
+  the disease.
+
+---
+
+## Grad-CAM vs LIME at a glance
+
+| Aspect | Grad-CAM | LIME |
+|--------|----------|------|
+| Vantage point | **inside** (gradients, feature maps) | **outside** (hide and observe) |
+| Needs model internals? | yes (white-box) | no (black-box, model-agnostic) |
+| Cost | low (one forward + backward) | high (`num_samples` forward passes) |
+| Determinism | deterministic | stochastic (random perturbations) |
+| Spatial unit | 7×7 upsampled | ~100 superpixels |
+| What it surfaced in Phase 3 | ventricle bias (Finding 8) | skull shortcut (Finding 10) |
+
+Because they fail and succeed for different reasons, agreement between them is
+strong evidence and disagreement is a lead worth chasing — which is the whole
+point of reporting more than one technique.
 
 ---
 
 ## Next
 
-LIME and SHAP are documented as sibling sections here as each is written up. In
-short: **LIME** perturbs the image (hides superpixels) and watches the decision
-change; **SHAP** attributes a fair, game-theoretic contribution to each pixel.
-Both answer the same question as Grad-CAM — *where did the evidence come from?* —
-from independent angles, which is what makes their agreement (or disagreement) in
-Phase 3 meaningful.
+**SHAP** joins as the third sibling section once written up: it assigns each pixel
+a fair, game-theoretic contribution (Shapley values) to the prediction, estimated
+via gradients against a set of background images. It answers the same *where did
+the evidence come from?* question with yet another independent mechanism.
 
 ---
 
@@ -218,4 +345,7 @@ Phase 3 meaningful.
 - Selvaraju, R. R., Cogswell, M., Das, A., Vedantam, R., Parikh, D., & Batra, D.
   (2017). *Grad-CAM: Visual Explanations from Deep Networks via Gradient-based
   Localization*. ICCV. arXiv:1610.02391.
+- Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). *"Why Should I Trust You?":
+  Explaining the Predictions of Any Classifier*. KDD. arXiv:1602.04938.
 - Gildenblat, J. et al. *pytorch-grad-cam* (library). https://github.com/jacobgil/pytorch-grad-cam
+- Ribeiro, M. T. et al. *lime* (library). https://github.com/marcotcr/lime
