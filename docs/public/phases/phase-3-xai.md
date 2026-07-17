@@ -32,7 +32,7 @@ The Phase 2 finding (glioma recall stuck at 82.2% independently of architecture 
 | `scripts/plot_xai_case_grids.py` | Reproducible generator for the case grid figures below |
 | `requirements-kaggle.txt` | Kernel bootstrap now installs from a versioned file — adding a Kaggle dep is a `git push`, not a kernel re-push |
 | `kernel/runner/run.py` | Now registers `train` (arch-agnostic) and `xai_batch` jobs; obsolete `run_vgg16` shim dropped (closes issue #1) |
-| `tests/test_xai_*.py` | 24 new unit tests (85 total in the suite) |
+| `tests/test_xai_*.py` | 30 new unit tests (82 total in the suite) |
 
 ---
 
