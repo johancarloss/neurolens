@@ -1,0 +1,74 @@
+# Curated demo examples — each one illustrates a finding from Phase 2/3.
+# The Gradio app reads this to show the image + its story. Every case is
+# grounded in the actual model predictions (VGG16 fold 0 = run 14,
+# ResNet50 fold 0 = run 26); confidences are from the held-out test set.
+#
+# All images are REAL scans (no synthetic Te-aug-me examples), so the demo
+# never showcases augmentation artifacts.
+
+examples:
+  - file: Te-gl_277.jpg
+    title: "Glioma read as 'no tumor' — the dangerous error"
+    true_label: glioma
+    story: |
+      **Both models miss this glioma**, calling it "no tumor" — the most
+      serious error type (a false negative for cancer). The tumor is visible
+      as a bright mass in the frontal lobe of the original MRI, yet the
+      Grad-CAM shows both models attending to the **ventricles** (center),
+      not the tumor. This is *structural bias*, not uncertainty: the models
+      learned "ventricular distortion = tumor" and look there by default.
+      Notice that **SHAP** is the only technique that registered the actual
+      tumor signal — the information was there; the model just under-weighted
+      it. (Phase 3, Findings 8 & 9.)
+
+  - file: Te-gl_113.jpg
+    title: "Glioma classified correctly — but for the wrong reasons"
+    true_label: glioma
+    story: |
+      A **correct** glioma prediction, both models confident. Success — but
+      look at the **LIME** map: both architectures flag the **skull** (dorsal
+      calvarium), non-cerebral tissue, as decisive for the "glioma" decision.
+      This is shortcut learning: the model relies on features that correlate
+      with the class in this dataset but are not the disease itself. The ~94%
+      accuracy may be partly inflated by dataset-specific cues that would not
+      transfer to a different scanner. (Phase 3, Finding 10.)
+
+  - file: Te-me_101.jpg
+    title: "Meningioma classified correctly and confidently"
+    true_label: meningioma
+    story: |
+      A clean case: both VGG16 and ResNet50 identify this meningioma with
+      ~100% confidence. Meningiomas arise from the meninges and typically sit
+      adjacent to the skull — a fairly consistent visual cue the models learn
+      well. Compare the three XAI maps here to the glioma cases: on an easy,
+      correct prediction the techniques agree more (Phase 3, Finding 7).
+
+  - file: Te-me_169.jpg
+    title: "Meningioma confidently misread as pituitary"
+    true_label: meningioma
+    story: |
+      **Both models confidently call this meningioma a pituitary tumor** — a
+      confident error, and notably the *same* wrong answer from two very
+      different architectures. This echoes the project's central finding:
+      when the models err, they tend to err the *same way*, because the
+      difficulty is in the data, not the architecture (Phase 2 & 3, Finding 4).
+
+  - file: Te-pi_10.jpg
+    title: "Pituitary tumor — the easiest class"
+    true_label: pituitary
+    story: |
+      Pituitary tumors appear in a fixed anatomical location (the sella
+      turcica, at the base of the brain), giving the models a strong,
+      position-based cue. This is the highest-F1 class in the study
+      (~99%). Both models classify it with near-total confidence — a good
+      baseline for what "the model looking at the right place" looks like.
+
+  - file: Te-no_1.jpg
+    title: "No tumor — a healthy scan"
+    true_label: notumor
+    story: |
+      A scan with no tumor. Both models correctly report "no tumor" with high
+      confidence. The absence of a mass effect is itself a learnable pattern.
+      Compare the saliency maps here (diffuse, no strong focus) to the tumor
+      cases — the model is not fixating on any single region because there is
+      no lesion to fixate on.
