@@ -3,8 +3,7 @@
 > Reference document — explains the **mechanism** of the explainability (XAI)
 > techniques used in [Phase 3](../phases/phase-3-xai.md). It assumes the CNN
 > internals described in [`model.md`](model.md) (convolution, feature maps,
-> backbone/head). **Grad-CAM** and **LIME** are documented below; **SHAP** joins
-> as a sibling section once written up.
+> backbone/head). **Grad-CAM**, **LIME** and **SHAP** are documented below.
 
 ---
 
@@ -314,29 +313,111 @@ learning.*
 
 ---
 
-## Grad-CAM vs LIME at a glance
+## SHAP — a fair contribution for every pixel
 
-| Aspect | Grad-CAM | LIME |
-|--------|----------|------|
-| Vantage point | **inside** (gradients, feature maps) | **outside** (hide and observe) |
-| Needs model internals? | yes (white-box) | no (black-box, model-agnostic) |
-| Cost | low (one forward + backward) | high (`num_samples` forward passes) |
-| Determinism | deterministic | stochastic (random perturbations) |
-| Spatial unit | 7×7 upsampled | ~100 superpixels |
-| What it surfaced in Phase 3 | ventricle bias (Finding 8) | skull shortcut (Finding 10) |
+SHAP (SHapley Additive exPlanations) answers the same question from a third angle:
+**fairness**. It asks *what is each pixel's fair share of the prediction?* — and
+"fair" has a precise meaning borrowed from cooperative game theory.
 
-Because they fail and succeed for different reasons, agreement between them is
-strong evidence and disagreement is a lead worth chasing — which is the whole
-point of reporting more than one technique.
+### The premise: dividing credit fairly
+
+Imagine two people start a company. Alone, neither can run it (worth $0 each);
+together it is worth $100. How should the $100 be split? The naive test — *"what
+happens if I leave?"* — says the company collapses to $0 without either person,
+crediting **each** with the full $100 (total $200, a double-count). The fair
+answer is the **Shapley value**: divide the credit so the shares **add up to the
+total** — here, $50 each.
+
+SHAP applies exactly this to an image: the "players" are the **pixels**, the
+"payout" is the **prediction score**, and each pixel's Shapley value is its fair
+share of that score. The shares are **additive** — they sum back to the
+prediction — a mathematical guarantee that LIME's local line and Grad-CAM's
+gradient heuristic do not provide. The price of that rigor is cost: the exact
+split would require testing every combination of pixels "in" and "out", so SHAP
+**estimates** it instead (below).
+
+### The background: what "absent" means
+
+Fair credit needs a starting point — the "$0 empty company." On an image a pixel
+is never truly absent (it always holds *some* value), so SHAP measures each
+pixel's contribution **relative to a set of background images** representing the
+"normal" input. The wrapper uses `shap.GradientExplainer`, which estimates Shapley
+values from gradients along the path between the background and the actual image
+(*expected gradients*). The background is **16 real scans sampled at random across
+all four classes** — a neutral reference for "a typical brain MRI," not biased
+toward any class. This is why SHAP is the only technique that needs the dataset
+loaded; Grad-CAM and LIME do not.
+
+### From contributions to a map
+
+The raw output is one signed value per pixel per channel. The wrapper reduces it
+to a saliency map by taking the **magnitude** of each contribution, summing over
+the three channels, and normalizing:
+
+```python
+shap_map = np.abs(sv).sum(axis=0)   # |contribution|, summed over channels -> (224, 224)
+peak = shap_map.max()
+if peak > 0:
+    shap_map = shap_map / peak      # normalize to [0, 1]
+```
+
+Because SHAP attributes **per pixel** (224×224), its maps are the
+**finest-grained** of the three — grainy and pointillist rather than the smooth
+blob of Grad-CAM's 7×7 or the chunky regions of LIME's superpixels.
+
+### In code
+
+[`src/neurolens/xai/shap_explainer.py`](../../../src/neurolens/xai/shap_explainer.py)
+builds the background once and runs `GradientExplainer`:
+
+```python
+self.explainer = shap.GradientExplainer(self.model, background)   # 16 background images
+shap_values, _ = self.explainer.shap_values(
+    input_tensor, ranked_outputs=1, nsamples=self.nsamples,       # 100 (demo) / 200 (research)
+)
+```
+
+`GradientExplainer` is used rather than `DeepExplainer`, which breaks on recent
+PyTorch versions (decision D7 in the Phase 3 plan); the per-version output shape
+is normalized before the map reduction above.
+
+### What SHAP revealed in this project
+
+On the same glioma both models misread as *notumor* (the error case above), SHAP
+told the other half of the story (Finding 9): its points concentrated **on the
+frontal-lobe tumor** — the very region Grad-CAM's attention ignored. The tumor
+signal *was present* in the pixels; the model simply under-weighted it in favor of
+the ventricular shortcut. SHAP measures contribution, not attention, so it
+registered evidence the decision left on the table — a distinction only visible
+because all three techniques ran on the same case.
+
+### Limitations
+
+- **Baseline-dependent.** Shapley values are defined *relative to the background*;
+  a different reference set shifts them, and 16 images is a speed/stability
+  trade-off.
+- **Estimated, not exact.** Exact Shapley values are exponential to compute;
+  `GradientExplainer` approximates them.
+- **Magnitude only.** Taking `abs` collapses "evidence for" and "against" into
+  "how much it mattered," so the map shows importance, not direction.
 
 ---
 
-## Next
+## The three techniques at a glance
 
-**SHAP** joins as the third sibling section once written up: it assigns each pixel
-a fair, game-theoretic contribution (Shapley values) to the prediction, estimated
-via gradients against a set of background images. It answers the same *where did
-the evidence come from?* question with yet another independent mechanism.
+| Aspect | Grad-CAM | LIME | SHAP |
+|--------|----------|------|------|
+| Vantage point | **inside** (gradients) | **outside** (hide & observe) | **fair share** (game theory) |
+| Model access | white-box | black-box | black-box (via gradients) |
+| Granularity | 7×7 upsampled | ~100 superpixels | **per pixel** (224×224) |
+| Cost | low | high (`num_samples` forwards) | medium |
+| Extra input needed | none | none | **background** set (dataset) |
+| Determinism | deterministic | stochastic | estimated |
+| Surfaced in Phase 3 | ventricle bias (F8) | skull shortcut (F10) | saw the ignored tumor (F9) |
+
+Three independent angles: where they **agree**, the evidence is strong; where they
+**disagree**, there is a lead worth chasing. That triangulation — not any single
+map — is the core of the Phase 3 analysis.
 
 ---
 
@@ -347,5 +428,8 @@ the evidence come from?* question with yet another independent mechanism.
   Localization*. ICCV. arXiv:1610.02391.
 - Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). *"Why Should I Trust You?":
   Explaining the Predictions of Any Classifier*. KDD. arXiv:1602.04938.
+- Lundberg, S. M., & Lee, S.-I. (2017). *A Unified Approach to Interpreting Model
+  Predictions*. NeurIPS. arXiv:1705.07874.
 - Gildenblat, J. et al. *pytorch-grad-cam* (library). https://github.com/jacobgil/pytorch-grad-cam
 - Ribeiro, M. T. et al. *lime* (library). https://github.com/marcotcr/lime
+- Lundberg, S. M. et al. *shap* (library). https://github.com/shap/shap
