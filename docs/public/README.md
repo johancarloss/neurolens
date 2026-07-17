@@ -37,6 +37,7 @@ Cross-cutting concepts are documented once in `methodology/` and referenced from
 | Model (VGG16 & ResNet50, transfer learning, residual connections, 2-stage protocol) | [`methodology/model.md`](methodology/model.md) |
 | Training (5-fold CV, hyperparameters, dual-write tracking) | [`methodology/training.md`](methodology/training.md) |
 | Evaluation metrics (accuracy, F1, confusion matrix) | [`methodology/metrics.md`](methodology/metrics.md) |
+| Explainability (how Grad-CAM/LIME/SHAP produce their maps) | [`methodology/explainability.md`](methodology/explainability.md) |
 
 ---
 
