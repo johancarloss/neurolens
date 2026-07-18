@@ -1,0 +1,32 @@
+{
+  "per_arch": {
+    "vgg16": {
+      "probs": {
+        "glioma": 1.0,
+        "meningioma": 3.653902233916879e-22,
+        "notumor": 9.227144930276059e-36,
+        "pituitary": 3.807989912980315e-29
+      },
+      "predicted_label": "glioma",
+      "times_ms": {
+        "gradcam": 574.0873236209154,
+        "lime": 50293.27666480094,
+        "shap": 77710.80651134253
+      }
+    },
+    "resnet50": {
+      "probs": {
+        "glioma": 0.9999891519546509,
+        "meningioma": 1.0374878002039623e-05,
+        "notumor": 2.3485806366352335e-07,
+        "pituitary": 1.8968539450270328e-07
+      },
+      "predicted_label": "glioma",
+      "times_ms": {
+        "gradcam": 185.43731048703194,
+        "lime": 15988.792733289301,
+        "shap": 28304.979843087494
+      }
+    }
+  }
+}
