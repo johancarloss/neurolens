@@ -45,3 +45,10 @@ def test_format_times_picks_readable_units() -> None:
     assert "210 ms" in line  # sub-second -> ms
     assert "15.2 s" in line  # over a second -> seconds
     assert "18.5 s" in line  # total = 210 + 15200 + 3100 ms
+    assert "compute cost" not in line  # live run: no pre-computed label
+
+
+def test_format_times_labels_precomputed() -> None:
+    """Pre-computed examples flag the line as compute cost, not the user's wait."""
+    line = _format_times({"gradcam": 210.0}, precomputed=True)
+    assert "compute cost (pre-computed)" in line

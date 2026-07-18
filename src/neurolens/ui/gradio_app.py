@@ -45,19 +45,22 @@ def _human_ms(ms: float) -> str:
     return f"{ms:.0f} ms" if ms < 1000 else f"{ms / 1000:.1f} s"
 
 
-def _format_times(times_ms: dict[str, float]) -> str:
+def _format_times(times_ms: dict[str, float], precomputed: bool = False) -> str:
     """Render per-technique compute times as one compact markdown line.
 
     Makes the cost of explainability visible: Grad-CAM is ~1 backward pass while
-    LIME/SHAP run the model hundreds of times, so their times differ by orders
-    of magnitude — a point worth showing in a defense.
+    LIME/SHAP run the model hundreds of times, so their times differ by orders of
+    magnitude — a point worth showing in a defense. Curated examples load
+    instantly from cache, so their line is labelled *compute cost (pre-computed)*
+    to make clear the numbers are the offline compute cost, not the user's wait.
     """
     parts = [
         f"**{label}** {_human_ms(times_ms[key])}" for key, label in _TIMES_ORDER if key in times_ms
     ]
     total = sum(times_ms.values())
     parts.append(f"**total** {_human_ms(total)}")
-    return "⏱️ " + " · ".join(parts)
+    prefix = "⏱️ compute cost (pre-computed): " if precomputed else "⏱️ "
+    return prefix + " · ".join(parts)
 
 
 def _load_examples(examples_dir: Path) -> tuple[list[list[str]], list[str]]:
@@ -96,12 +99,21 @@ def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Bl
         if image is None:
             return [None] + [None] * (5 * len(archs))
         result = load_result(precomputed_root / example_id, archs) if example_id else None
+        precomputed = result is not None
         if result is None:
             result = inference.explain(image)
         outputs: list[object] = [result.original]
         for arch in archs:
             r = result.per_arch[arch]
-            outputs.extend([r.probs, r.gradcam, r.lime, r.shap, _format_times(r.times_ms)])
+            outputs.extend(
+                [
+                    r.probs,
+                    r.gradcam,
+                    r.lime,
+                    r.shap,
+                    _format_times(r.times_ms, precomputed=precomputed),
+                ]
+            )
         return outputs
 
     with gr.Blocks(title="NeuroLens — Brain Tumor MRI Classifier", fill_width=True) as demo:
