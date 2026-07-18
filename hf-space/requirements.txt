@@ -1,0 +1,11 @@
+# Lean runtime deps for the HF Space (demo only — no wandb/postgres/training).
+# The neurolens package itself is vendored into the Space by the deploy script.
+# gradio is NOT listed here: HuggingFace installs it from the README `sdk_version`.
+torch>=2.10,<2.11
+torchvision>=0.25,<0.26
+grad-cam>=1.5
+lime>=0.2.0.1
+shap>=0.51
+pyyaml>=6.0
+Pillow>=10.0
+numpy>=2.0
