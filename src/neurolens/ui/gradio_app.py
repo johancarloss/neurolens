@@ -16,6 +16,7 @@ import numpy as np
 import yaml
 
 from neurolens.ui.inference import NeuroLensInference
+from neurolens.ui.precompute import load_result
 
 _ARCH_LABEL = {"vgg16": "VGG16", "resnet50": "ResNet50"}
 
@@ -62,9 +63,10 @@ def _format_times(times_ms: dict[str, float]) -> str:
 def _load_examples(examples_dir: Path) -> tuple[list[list[str]], list[str]]:
     """Return (gradio_examples, example_labels) from examples.yaml.
 
-    gradio_examples is ``[[image_path, story_markdown], ...]`` so clicking an
-    example fills both the image input and the narrative panel; example_labels
-    are the titles shown under each thumbnail so users can tell them apart.
+    gradio_examples is ``[[image_path, story_markdown, stem], ...]``: clicking an
+    example fills the image input, the narrative panel, and a hidden field with
+    the example's stem (used to load its pre-computed maps). example_labels are
+    the titles shown under each thumbnail so users can tell them apart.
     """
     spec = yaml.safe_load((examples_dir / "examples.yaml").read_text())
     gradio_examples: list[list[str]] = []
@@ -72,7 +74,8 @@ def _load_examples(examples_dir: Path) -> tuple[list[list[str]], list[str]]:
     for ex in spec["examples"]:
         path = str(examples_dir / ex["file"])
         story = f"### {ex['title']}\n\n{ex['story']}"
-        gradio_examples.append([path, story])
+        stem = Path(ex["file"]).stem
+        gradio_examples.append([path, story, stem])
         labels.append(ex["title"])
     return gradio_examples, labels
 
@@ -80,14 +83,21 @@ def _load_examples(examples_dir: Path) -> tuple[list[list[str]], list[str]]:
 def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Blocks:
     """Assemble the Gradio Blocks demo over a ready ``NeuroLensInference``."""
     examples_dir = Path(examples_dir)
+    precomputed_root = examples_dir / "precomputed"
     gradio_examples, example_labels = _load_examples(examples_dir)
     archs = inference.archs
 
-    def run(image: np.ndarray | None) -> list[object]:
-        """Classify + explain, returning the flat list of outputs Gradio expects."""
+    def run(image: np.ndarray | None, example_id: str) -> list[object]:
+        """Classify + explain, returning the flat list of outputs Gradio expects.
+
+        Curated examples (``example_id`` set) load pre-computed maps instantly;
+        free uploads compute live (~20-60s on CPU).
+        """
         if image is None:
             return [None] + [None] * (5 * len(archs))
-        result = inference.explain(image)
+        result = load_result(precomputed_root / example_id, archs) if example_id else None
+        if result is None:
+            result = inference.explain(image)
         outputs: list[object] = [result.original]
         for arch in archs:
             r = result.per_arch[arch]
@@ -96,6 +106,10 @@ def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Bl
 
     with gr.Blocks(title="NeuroLens — Brain Tumor MRI Classifier", fill_width=True) as demo:
         gr.Markdown(_HEADER)
+
+        # Hidden: which curated example is loaded (empty for free uploads).
+        # Routes run() to the pre-computed cache instead of a live compute.
+        selected_example = gr.Textbox(visible=False)
 
         with gr.Row():
             with gr.Column(scale=2):
@@ -107,7 +121,7 @@ def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Bl
 
         gr.Examples(
             examples=gradio_examples,
-            inputs=[image_input, story_md],
+            inputs=[image_input, story_md, selected_example],
             example_labels=example_labels,
             label="Curated examples — each illustrates a finding (click to load)",
         )
@@ -132,9 +146,11 @@ def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Bl
             "They disagree by design — that's why we show all three.*"
         )
 
-        # Free uploads have no preset story; reset the narrative panel.
-        image_input.upload(lambda: _UPLOAD_STORY, outputs=story_md)
+        # A free upload is not a curated example: clear the story + the cache key.
+        image_input.upload(lambda: ("", _UPLOAD_STORY), outputs=[selected_example, story_md])
 
-        run_btn.click(run, inputs=image_input, outputs=[original_view, *arch_outputs])
+        run_btn.click(
+            run, inputs=[image_input, selected_example], outputs=[original_view, *arch_outputs]
+        )
 
     return demo

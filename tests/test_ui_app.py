@@ -23,12 +23,13 @@ class _FakeInference:
 
 
 def test_load_examples_parses_all_six() -> None:
-    """Every curated example yields a [path, story] pair with an existing image."""
+    """Every curated example yields a [path, story, stem] row with an existing image."""
     examples, _ = _load_examples(_EXAMPLES_DIR)
     assert len(examples) == 6
-    for path, story in examples:
+    for path, story, stem in examples:
         assert Path(path).exists()
         assert story.startswith("###")  # title heading
+        assert stem  # non-empty cache key
 
 
 def test_build_demo_constructs_blocks() -> None:
