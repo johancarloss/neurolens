@@ -78,6 +78,12 @@ results label their timings as *compute cost*, live runs do not.
 
 ## What it looks like
 
+![The demo's initial screen: the upload area, the six curated examples each labelled with the finding it illustrates, and the two architecture panels waiting to be filled.](../assets/phase-4-demo-initial.png)
+
+*The starting screen. The header links back to the methodology; the six curated
+cases are labelled by the finding each one illustrates; both architecture panels
+wait side by side.*
+
 ![The demo showing a curated example: a glioma both models read as "no tumor", with the narrative panel and, for each architecture, the prediction plus Grad-CAM, LIME and SHAP overlays.](../assets/phase-4-demo-example.png)
 
 *A curated case (`Te-gl_277`). Both models say **notumor** (100% / 98%) while
@@ -98,7 +104,7 @@ Times from the demo itself, on the CPU of a small VPS (no GPU):
 | Path | VGG16 | ResNet50 | User wait |
 |------|-------|----------|-----------|
 | Curated example (cached) | — | — | **< 1 s** |
-| Live upload | Grad-CAM 554 ms · LIME 70.4 s · SHAP 114.4 s · **total 185 s** | Grad-CAM 322 ms · LIME 22.8 s · SHAP 40.6 s · **total 64 s** | **~4 min** |
+| Live upload | Grad-CAM 530 ms · LIME 68.7 s · SHAP 117.6 s · **total 187 s** | Grad-CAM 383 ms · LIME 23.1 s · SHAP 41.1 s · **total 65 s** | **~4 min** |
 
 Two things worth reading off that table:
 
