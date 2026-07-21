@@ -31,9 +31,17 @@ This is the interactive companion to a study that found the two models *agree on
 their predictions but look in different places*, and that both fail on gliomas
 for the same, data-driven reason. Try `Te-gl_277` to see a glioma both models
 miss — and where they (wrongly) look.
+
+📄 [Code & methodology](https://github.com/johancarloss/neurolens) ·
+[Phase 3 — the XAI analysis](https://github.com/johancarloss/neurolens/blob/main/docs/public/phases/phase-3-xai.md) ·
+[How Grad-CAM, LIME and SHAP work](https://github.com/johancarloss/neurolens/blob/main/docs/public/methodology/explainability.md)
 """
 
-_UPLOAD_STORY = "*Your own scan — click **Classify & Explain**. Live inference takes ~20–60s.*"
+_UPLOAD_STORY = (
+    "*Your own scan — click **Classify & Explain**. Live inference takes "
+    "**~4 minutes** on CPU (LIME and SHAP dominate); the curated examples above "
+    "are pre-computed and open instantly.*"
+)
 
 _TIMES_PLACEHOLDER = "*Compute times appear here after you classify.*"
 
@@ -94,7 +102,7 @@ def build_demo(inference: NeuroLensInference, examples_dir: str | Path) -> gr.Bl
         """Classify + explain, returning the flat list of outputs Gradio expects.
 
         Curated examples (``example_id`` set) load pre-computed maps instantly;
-        free uploads compute live (~20-60s on CPU).
+        free uploads compute live (~4 min on CPU, measured).
         """
         if image is None:
             return [None] + [None] * (5 * len(archs))

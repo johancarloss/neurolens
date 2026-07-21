@@ -1,6 +1,6 @@
 """Pre-computed example results for the demo (Phase 4, Bloco 4).
 
-The curated examples must open instantly, but a live run is ~20-60s on CPU
+The curated examples must open instantly, but a live run is ~4 min on CPU
 (LIME/SHAP dominate). We run each example once, offline, and persist the overlays
 (PNG) + the numeric results (JSON) so the UI can serve them from disk. Free
 uploads still compute live.

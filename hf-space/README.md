@@ -21,4 +21,4 @@ where they (wrongly) look — or **upload your own** MRI.
 
 - **Code, methodology & write-ups:** https://github.com/johancarloss/neurolens
 - Curated examples load **instantly** (pre-computed). Free uploads run **live on
-  CPU** (~30–60s; LIME and SHAP dominate).
+  CPU** (**~4 minutes**; LIME and SHAP dominate).
