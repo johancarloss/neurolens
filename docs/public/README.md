@@ -20,9 +20,8 @@ The project is delivered in 6 phases. Each phase produces a milestone write-up h
 | 1 | VGG16 Baseline (Wong et al. replication) | ✅ Complete — 94.11% ± 0.56% (5-fold) | [`phases/phase-1-vgg16-baseline.md`](phases/phase-1-vgg16-baseline.md) |
 | 2 | Multi-architecture (ResNet50) | ✅ Complete — 94.64% ± 0.55% (5-fold) | [`phases/phase-2-architectures.md`](phases/phase-2-architectures.md) |
 | 3 | XAI analysis (Grad-CAM + LIME + SHAP) | ✅ Complete — 12 findings on 40 targeted glioma cases | [`phases/phase-3-xai.md`](phases/phase-3-xai.md) |
-| **4** | **Gradio demo** | 🔄 Next | — |
-| 4 | Gradio demo | ⏸ Not started | — |
-| 5 | Polish & delivery | ⏸ Not started | — |
+| 4 | Interactive demo (Gradio, 2 archs × 3 XAI techniques) | ✅ Complete — curated examples instant, live uploads on CPU | [`phases/phase-4-demo.md`](phases/phase-4-demo.md) |
+| **5** | **Polish & delivery** | 🔄 Next | — |
 
 ---
 

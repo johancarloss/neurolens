@@ -12,7 +12,7 @@ Course project for *Paradigmas de Aprendizagem de Máquina* (P6) at the
 
 ## Status
 
-✅ **Phases 1, 2, and 3 complete.** 🔄 **Phase 4 (Gradio demo) next.**
+✅ **Phases 1–4 complete.** 🔄 **Phase 5 (polish & delivery) next.**
 
 Two architectures (VGG16 + ResNet50) trained on identical splits, then explained with three complementary XAI techniques (Grad-CAM + LIME + SHAP) over a targeted sample of glioma cases.
 
@@ -37,11 +37,30 @@ findings and the two thesis figures with side-by-side XAI comparisons.
 
 ---
 
+## The demo
+
+An interactive Gradio app runs **both architectures and all three XAI techniques
+on the same scan**, side by side with the original MRI. Six curated cases open
+instantly and each narrates the finding it materialises; you can also upload your
+own scan.
+
+![The demo showing a curated case: a glioma both models read as "no tumor", with the narrative panel and, per architecture, the prediction plus Grad-CAM, LIME and SHAP overlays.](docs/public/assets/phase-4-demo-example.png)
+
+```bash
+uv run python scripts/run_demo.py     # http://127.0.0.1:7860
+```
+
+See the **[Phase 4 write-up](docs/public/phases/phase-4-demo.md)** for the design,
+the measured latencies, and why it runs locally rather than on a public Space.
+
+---
+
 ## Documentation
 
 Public documentation lives in [`docs/public/`](docs/public/) and grows as
 each phase completes:
 
+- **[Phase 4 — Interactive Demo (Gradio)](docs/public/phases/phase-4-demo.md)** — two architectures × three XAI techniques on one scan, curated cases that narrate the findings
 - **[Phase 3 — Comparative XAI (Grad-CAM + LIME + SHAP)](docs/public/phases/phase-3-xai.md)** — twelve findings, thesis figures with side-by-side comparisons, the structural bias diagnosis
 - **[Phase 2 — Multi-Architecture (VGG16 vs ResNet50)](docs/public/phases/phase-2-architectures.md)** — fair comparison, side-by-side confusion matrices, the architecture-independent glioma ceiling
 - **[Phase 1 — VGG16 Baseline](docs/public/phases/phase-1-vgg16-baseline.md)** — full 5-fold results, confusion matrix, Wong et al. comparison, parked improvements
@@ -50,6 +69,7 @@ each phase completes:
   - [Model](docs/public/methodology/model.md) — VGG16 & ResNet50, transfer learning, residual connections, 2-stage protocol
   - [Training](docs/public/methodology/training.md) — 5-fold CV, hyperparameters, dual-write tracking
   - [Metrics](docs/public/methodology/metrics.md) — accuracy, F1, confusion matrix
+  - [Explainability](docs/public/methodology/explainability.md) — how Grad-CAM, LIME and SHAP turn a decision into a map
 
 The [`docs/public/README.md`](docs/public/README.md) is the index.
 
@@ -59,8 +79,8 @@ The [`docs/public/README.md`](docs/public/README.md) is the index.
 
 - **Python 3.12** + [`uv`](https://docs.astral.sh/uv/) (package manager with `exclude-newer` supply-chain defense)
 - **PyTorch 2.10** + torchvision (deep learning core)
-- **grad-cam**, **lime**, **shap** (three XAI techniques to be compared in Phase 3)
-- **Gradio** (interactive demo, Phase 4)
+- **grad-cam**, **lime**, **shap** (the three XAI techniques compared in Phase 3)
+- **Gradio** (the interactive demo, Phase 4)
 - **Weights & Biases** (experiment tracking, shareable dashboards)
 - **PostgreSQL** (durable source of truth — dual-write with W&B)
 - **Kaggle Kernels** with T4 GPU (free compute)
